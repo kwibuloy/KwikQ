@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import PublicLayout from './layout/PublicLayout';
 import HomePage from './pages/HomePage';
 import PatientPage from './pages/PatientPage';
@@ -9,6 +9,8 @@ import AdminAuthPage from './pages/AdminAuthPage';
 import AdminRegisterPage from './pages/AdminRegisterPage';
 import LoginPage from './pages/LoginPage';
 import NotAuthorizedPage from './pages/NotAuthorizedPage';
+import NotFoundPage from './pages/NotFoundPage';
+import OfflineBanner from './ui/OfflineBanner';
 import ProtectedRoute from './components/ProtectedRoute';
 import { clearAccessToken, getAccessToken } from './services/api';
 import { supabase } from './services/supabaseClient';
@@ -34,6 +36,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <OfflineBanner />
       <Routes>
         <Route element={<PublicLayout />}>
           <Route path="/" element={<HomePage />} />
@@ -42,6 +45,7 @@ export default function App() {
           <Route path="/patient/auth" element={<PatientAuthPage />} />
           <Route path="/admin/auth" element={<AdminAuthPage />} />
           <Route path="/admin/register" element={<AdminRegisterPage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
         <Route
           path="/patient"
@@ -51,7 +55,6 @@ export default function App() {
           path="/admin"
           element={<ProtectedRoute requiredRole="admin"><AdminPage /></ProtectedRoute>}
         />
-        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

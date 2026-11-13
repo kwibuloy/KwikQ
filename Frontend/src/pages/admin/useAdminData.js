@@ -34,6 +34,7 @@ export function useDoctorQueue(doctorId) {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [updatedAt, setUpdatedAt] = useState(null);
 
   const reload = useCallback(async ({ silent = false } = {}) => {
     if (!doctorId) return;
@@ -43,6 +44,7 @@ export function useDoctorQueue(doctorId) {
       setQueue(q || []);
       setLogs(l || []);
       setError('');
+      setUpdatedAt(new Date());
     } catch (err) {
       setError(err.message || 'Failed to load the queue.');
     } finally {
@@ -53,6 +55,8 @@ export function useDoctorQueue(doctorId) {
   useEffect(() => {
     setQueue([]);
     setLogs([]);
+    setError('');
+    setUpdatedAt(null);
     if (!doctorId) return undefined;
     reload();
 
@@ -83,7 +87,7 @@ export function useDoctorQueue(doctorId) {
     };
   }, [doctorId, reload]);
 
-  return { queue, logs, loading, error, reload };
+  return { queue, logs, loading, error, updatedAt, reload };
 }
 
 export function useInvitations() {

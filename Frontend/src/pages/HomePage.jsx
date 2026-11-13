@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { StatusPill, TicketStub } from '../ui';
 import { IconBell, IconClock, IconDoctor, IconQueue, IconShield, IconTicket, IconUsers } from '../ui/icons';
 import { useAuth } from '../hooks/useAuth';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import ui from '../ui/ui.module.css';
 import s from './HomePage.module.css';
 
@@ -28,6 +29,7 @@ const FEATURES = [
 
 export default function HomePage() {
   const { token, role } = useAuth();
+  useDocumentTitle('Virtual clinic queues');
   const patientHref = token && role === 'patient' ? '/patient' : '/patient/auth';
   const adminHref = token && role === 'admin' ? '/admin' : '/admin/auth';
 

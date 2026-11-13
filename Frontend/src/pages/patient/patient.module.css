@@ -93,3 +93,23 @@
   .ticketEmpty { grid-template-columns: 1fr; }
   .modalActions > * { flex: 1; }
 }
+
+/* ── Implicit states ───────────────────────── */
+.liveStale { color: var(--warn-ink); }
+.liveStale .liveDot { background: var(--warn-ink); animation: none; }
+.ticketLoading { grid-template-columns: auto 1fr !important; align-items: center; gap: 24px; }
+.skelStub, .skelLines span {
+  display: block; border-radius: 14px;
+  background: linear-gradient(90deg, var(--surface-2), var(--surface-3), var(--surface-2));
+  background-size: 200% 100%; animation: shimmer 1.4s ease-in-out infinite;
+}
+.skelStub { width: 150px; height: 92px; border-radius: 16px; }
+.skelLines { display: grid; gap: 12px; }
+.skelLines span { height: 14px; width: 60%; border-radius: 7px; }
+.skelLines span + span { width: 40%; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+.gridNotice { margin-bottom: 14px; }
+.doctorBlocked { opacity: .55; }
+.doctorOff { margin-top: 12px; font-size: 13px; color: var(--ink-muted); }
+.ticketCard.ticketError { grid-template-columns: 1fr; min-height: 0; }

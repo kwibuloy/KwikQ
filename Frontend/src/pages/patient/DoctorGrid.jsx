@@ -4,9 +4,10 @@ import { IconArrowRight, IconDoctor } from '../../ui/icons';
 import { doctorName, initials } from '../../ui/status';
 import s from './patient.module.css';
 
-function DoctorCardBase({ doctor, onPick }) {
+function DoctorCardBase({ doctor, onPick, blocked = false }) {
   const name = doctorName(doctor);
   const available = !!doctor.is_available;
+  const canJoin = available && !blocked;
   const waiting = doctor.current_queue_length ?? 0;
   return (
     <li>
@@ -14,8 +15,8 @@ function DoctorCardBase({ doctor, onPick }) {
         type="button"
         className={s.doctor}
         onClick={() => onPick(doctor)}
-        disabled={!available}
-        aria-label={`Dr. ${name}, ${doctor.specialization || 'General'}. ${available ? `${waiting} waiting. Join queue` : 'Not accepting patients'}`}
+        disabled={!canJoin}
+        aria-label={`Dr. ${name}, ${doctor.specialization || 'General'}. ${waiting} waiting. ${!available ? 'Not accepting patients' : blocked ? 'You already hold a ticket' : 'Join queue'}`}
       >
         <span className={s.doctorTop}>
           <span className={s.doctorAvatar} aria-hidden="true">{initials(name)}</span>
@@ -28,7 +29,8 @@ function DoctorCardBase({ doctor, onPick }) {
           <span><b className="tabular">~{doctor.estimated_wait_minutes ?? 0}</b> min</span>
           {doctor.room_number && <span>Room <b>{doctor.room_number}</b></span>}
         </span>
-        {available && <span className={s.doctorCta}>Join queue <IconArrowRight width={16} height={16} /></span>}
+        {canJoin && <span className={s.doctorCta}>Join queue <IconArrowRight width={16} height={16} /></span>}
+        {!available && <span className={s.doctorOff}>Not taking patients right now</span>}
       </button>
     </li>
   );
@@ -36,7 +38,7 @@ function DoctorCardBase({ doctor, onPick }) {
 
 const DoctorCard = memo(DoctorCardBase);
 
-export default function DoctorGrid({ doctors, filter, onPick }) {
+export default function DoctorGrid({ doctors, filter, onPick, blocked = false }) {
   const term = filter.trim().toLowerCase();
   const rows = doctors.filter((d) =>
     !term || [doctorName(d), d.specialization, d.room_number].some((v) => String(v || '').toLowerCase().includes(term)),
@@ -49,7 +51,7 @@ export default function DoctorGrid({ doctors, filter, onPick }) {
 
   return (
     <ul className={s.doctorGrid}>
-      {rows.map((d) => <DoctorCard key={d.doctor_id} doctor={d} onPick={onPick} />)}
+      {rows.map((d) => <DoctorCard key={d.doctor_id} doctor={d} onPick={onPick} blocked={blocked} />)}
     </ul>
   );
 }

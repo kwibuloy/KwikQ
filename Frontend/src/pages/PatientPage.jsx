@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import DashboardLayout from '../layout/DashboardLayout';
-import { EmptyState, Notice, Panel, Skeleton, StatusPill, TicketStub } from '../ui';
+import { EmptyState, ErrorState, Notice, Panel, Skeleton, StatusPill, TicketStub } from '../ui';
 import { IconHistory, IconTicket } from '../ui/icons';
 import { t } from '../ui/table';
 import { useAuth } from '../hooks/useAuth';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { clearAccessToken, getDoctors, getQueueHistory } from '../services/api';
 import MyTicket from './patient/MyTicket';
 import DoctorGrid from './patient/DoctorGrid';
@@ -24,18 +25,21 @@ export default function PatientPage() {
   const [search, setSearch] = useState('');
   const [doctors, setDoctors] = useState([]);
   const [doctorsLoading, setDoctorsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [doctorsError, setDoctorsError] = useState('');
   const [history, setHistory] = useState([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [historyError, setHistoryError] = useState('');
   const [picked, setPicked] = useState(null);
   const [ticketKey, setTicketKey] = useState(0);
+  const [activeTicket, setActiveTicket] = useState(null);
+  useDocumentTitle(VIEWS[view].title);
 
   const loadDoctors = useCallback(async () => {
     try {
       setDoctors(await getDoctors());
-      setError('');
-    } catch {
-      setError('Could not load doctors. Please try again in a moment.');
+      setDoctorsError('');
+    } catch (err) {
+      setDoctorsError(err.message);
     } finally {
       setDoctorsLoading(false);
     }
@@ -44,8 +48,9 @@ export default function PatientPage() {
   const loadHistory = useCallback(async () => {
     try {
       setHistory((await getQueueHistory()) || []);
-    } catch {
-      setError('Could not load your visit history.');
+      setHistoryError('');
+    } catch (err) {
+      setHistoryError(err.message);
     } finally {
       setHistoryLoaded(true);
     }
@@ -58,11 +63,17 @@ export default function PatientPage() {
     return () => clearInterval(id);
   }, [loadDoctors, loadHistory]);
 
-  const refreshAll = () => {
+  const refreshAll = useCallback(() => {
     setTicketKey((k) => k + 1);
     loadDoctors();
     loadHistory();
-  };
+  }, [loadDoctors, loadHistory]);
+
+  // Ticket ended by the clinic, or left by the patient: refresh lists, not the ticket itself.
+  const refreshLists = useCallback(() => {
+    loadDoctors();
+    loadHistory();
+  }, [loadDoctors, loadHistory]);
 
   const term = search.trim().toLowerCase();
   const historyRows = history.filter((h) =>
@@ -89,16 +100,26 @@ export default function PatientPage() {
       onSignOut={() => { clearAccessToken(); navigate('/login', { replace: true }); }}
     >
       <div className={s.stack}>
-        {error && <Notice kind="error" onDismiss={() => setError('')}>{error}</Notice>}
-
         {view === 'visit' && (
           <>
-            <MyTicket refreshKey={ticketKey} onChange={refreshAll} />
+            <MyTicket refreshKey={ticketKey} onTicket={setActiveTicket} onEnded={refreshLists} />
             <Panel title="Doctors today" subtitle="Available doctors with the shortest queue are shown first.">
               {doctorsLoading ? (
                 <div className={s.doctorGrid}><Skeleton height={190} /><Skeleton height={190} /><Skeleton height={190} /></div>
+              ) : doctorsError && !doctors.length ? (
+                <ErrorState title="We couldn’t load today’s doctors" onRetry={loadDoctors}>{doctorsError}</ErrorState>
               ) : (
-                <DoctorGrid doctors={doctors} filter={search} onPick={setPicked} />
+                <>
+                  {doctorsError && (
+                    <div className={s.gridNotice}><Notice kind="info">Couldn’t refresh just now. Showing the last update.</Notice></div>
+                  )}
+                  {activeTicket && (
+                    <div className={s.gridNotice}>
+                      <Notice kind="info">You’re holding ticket #{activeTicket.ticket_number}. You can only be in one queue at a time.</Notice>
+                    </div>
+                  )}
+                  <DoctorGrid doctors={doctors} filter={search} onPick={setPicked} blocked={!!activeTicket} />
+                </>
               )}
             </Panel>
           </>
@@ -106,7 +127,9 @@ export default function PatientPage() {
 
         {view === 'history' && (
           <Panel title="Past and current visits">
-            {!historyLoaded ? <Skeleton height={200} /> : history.length === 0 ? (
+            {!historyLoaded ? <Skeleton height={200} /> : historyError && !history.length ? (
+              <ErrorState title="We couldn’t load your history" onRetry={loadHistory}>{historyError}</ErrorState>
+            ) : history.length === 0 ? (
               <EmptyState icon={<IconHistory />} title="No visits yet">Your tickets will appear here after you join a queue.</EmptyState>
             ) : historyRows.length === 0 ? (
               <EmptyState title="No matches">No visit matches “{search}”.</EmptyState>

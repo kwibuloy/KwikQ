@@ -27,6 +27,27 @@ export const clearAccessToken = () => {
   window.dispatchEvent(new Event('auth-state-changed'));
 };
 
+/** Why the user was signed out, shown once on the next sign-in screen. */
+const SIGNOUT_REASON_KEY = 'kwikq_signout_reason';
+export const takeSignOutReason = () => {
+  try {
+    const reason = sessionStorage.getItem(SIGNOUT_REASON_KEY);
+    sessionStorage.removeItem(SIGNOUT_REASON_KEY);
+    return reason;
+  } catch {
+    return null;
+  }
+};
+
+/** An API failure with the HTTP status (0 = network/offline). */
+export class ApiError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.status = status;
+  }
+}
+
+/** @returns {Promise<any>} */
 async function apiFetch(path, options = {}) {
   const token = getAccessToken();
   const headers = {
@@ -37,22 +58,42 @@ async function apiFetch(path, options = {}) {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-  });
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  } catch {
+    throw new ApiError(
+      navigator.onLine === false
+        ? 'You’re offline. Reconnect and try again.'
+        : 'Can’t reach KwikQ right now. Please try again in a moment.',
+      0,
+    );
+  }
+
   const raw = await res.text();
-  let data = null;
+  let data = {};
   try {
     data = raw ? JSON.parse(raw) : {};
   } catch {
-    throw new Error(`Non-JSON response from API for ${path}. Check API base URL and endpoint.`);
+    throw new ApiError('KwikQ sent an unexpected response. Please try again.', res.status);
   }
+
   if (!res.ok) {
-    if (res.status === 401 || res.status === 403) {
+    // A signed-in request that is refused means the session is gone or the role changed.
+    if (token && (res.status === 401 || res.status === 403)) {
+      try {
+        sessionStorage.setItem(SIGNOUT_REASON_KEY, res.status === 401
+          ? 'Your session expired. Please sign in again.'
+          : 'Your account no longer has access to that page. Please sign in again.');
+      } catch { /* storage unavailable */ }
       clearAccessToken();
     }
-    throw new Error(data.error || data.message || 'Request failed');
+    const fallback = res.status === 429
+      ? 'Too many attempts. Please wait a few minutes and try again.'
+      : res.status >= 500 ? 'Something went wrong on our side. Please try again.' : 'Request failed.';
+    // Server-side failures get our own wording; 4xx messages are written for users.
+    const message = res.status >= 500 ? fallback : data.error || data.message || fallback;
+    throw new ApiError(message, res.status);
   }
   return data;
 }

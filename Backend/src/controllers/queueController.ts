@@ -225,7 +225,7 @@ export const getPatientStatus = async (req: Request, res: Response) => {
             FROM queues q
             LEFT JOIN doctors d ON q.doctor_id = d.doctor_id
             WHERE q.user_id = $1
-              AND q.status IN ('waiting', 'called')
+              AND q.status IN ('waiting', 'called', 'in-consultation')
               AND (q.created_at AT TIME ZONE 'Asia/Singapore')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')::date
             ORDER BY q.created_at DESC
             LIMIT 1;

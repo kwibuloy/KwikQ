@@ -98,6 +98,24 @@ describe('role escalation through user_metadata', () => {
     });
 });
 
+describe('login edge states', () => {
+    it('tells the user to confirm their email instead of "invalid password"', async () => {
+        supabase.auth.signInWithPassword.mockResolvedValue({
+            data: { user: null, session: null },
+            error: { code: 'email_not_confirmed', message: 'Email not confirmed' },
+        });
+        const res = await request(app).post('/api/auth/login').send({ email: 'a@b.c', password: 'pw' });
+        expect(res.status).toBe(403);
+        expect(res.body.code).toBe('email_not_confirmed');
+        expect(res.body.error).toMatch(/confirm your email/i);
+    });
+
+    it('rejects a login without credentials', async () => {
+        const res = await request(app).post('/api/auth/login').send({});
+        expect(res.status).toBe(400);
+    });
+});
+
 describe('admin-only routes refuse patients', () => {
     const adminRoutes: Array<[method: 'get' | 'post' | 'patch' | 'delete', path: string]> = [
         ['post', '/api/admin/invite'],

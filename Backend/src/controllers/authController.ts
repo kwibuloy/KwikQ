@@ -143,6 +143,12 @@ export const login = async (req: Request, res: Response) => {
 
     try {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if ((error as { code?: string } | null)?.code === 'email_not_confirmed') {
+            return res.status(403).json({
+                error: 'Please confirm your email first. Check your inbox for the link we sent.',
+                code: 'email_not_confirmed',
+            });
+        }
         if (error || !data.session || !data.user) {
             return res.status(401).json({ error: 'Invalid email or password.' });
         }

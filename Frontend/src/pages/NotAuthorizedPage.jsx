@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
 import AuthShell from './auth/AuthShell';
 import ui from '../ui/ui.module.css';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 export default function NotAuthorizedPage() {
+  useDocumentTitle('Not authorized');
   return (
     <AuthShell
       eyebrow="Access restricted"

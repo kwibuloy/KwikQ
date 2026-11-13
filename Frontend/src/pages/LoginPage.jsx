@@ -2,8 +2,10 @@ import { Link } from 'react-router-dom';
 import AuthShell from './auth/AuthShell';
 import { IconArrowRight, IconShield, IconTicket } from '../ui/icons';
 import s from './auth/auth.module.css';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 export default function LoginPage() {
+  useDocumentTitle('Sign in');
   return (
     <AuthShell eyebrow="Welcome to KwikQ" title="How are you visiting?" subtitle="Pick the sign-in that matches your account.">
       <div className={s.choices}>

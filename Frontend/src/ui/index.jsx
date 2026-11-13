@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import s from './ui.module.css';
 import { statusInfo } from './status';
@@ -111,7 +111,17 @@ export function EmptyState({ icon = null, title, children = null }) {
   );
 }
 
-export function Notice({ kind = 'info', children = null, onDismiss = undefined }) {
+/** Status message. Success messages with onDismiss clear themselves after `autoHide` ms. */
+export function Notice({ kind = 'info', children = null, onDismiss = undefined, autoHide = kind === 'success' ? 6000 : 0 }) {
+  // Keep the latest callback without restarting the timer on every parent render.
+  const dismissRef = useRef(onDismiss);
+  useEffect(() => { dismissRef.current = onDismiss; });
+  const canDismiss = !!onDismiss;
+  useEffect(() => {
+    if (!children || !canDismiss || !autoHide) return undefined;
+    const id = setTimeout(() => dismissRef.current?.(), autoHide);
+    return () => clearTimeout(id);
+  }, [children, canDismiss, autoHide]);
   if (!children) return null;
   return (
     <div className={cx(s.notice, s[`notice_${kind}`])} role={kind === 'error' ? 'alert' : 'status'}>
@@ -125,23 +135,57 @@ export function Notice({ kind = 'info', children = null, onDismiss = undefined }
   );
 }
 
+/** Failed-to-load state with an optional retry, so errors never look like empty data. */
+export function ErrorState({ title = 'Couldn’t load this', children = null, onRetry = undefined }) {
+  const [busy, setBusy] = useState(false);
+  const retry = async () => {
+    setBusy(true);
+    try { await onRetry(); } finally { setBusy(false); }
+  };
+  return (
+    <div className={s.errorBlock}>
+      <Notice kind="error"><strong>{title}.</strong> {children}</Notice>
+      {onRetry && <Button variant="secondary" size="sm" loading={busy} onClick={retry}>Try again</Button>}
+    </div>
+  );
+}
+
 /* ── Forms ───────────────────────────────────────────── */
 export function Field({ label, hint = '', className = '', as = 'input', children = null, ...inputProps }) {
   const id = useId();
   const hintId = hint ? `${id}-hint` : undefined;
   /** @type {any} */
   const Control = as;
+  const isPassword = as === 'input' && inputProps.type === 'password';
+  const [reveal, setReveal] = useState(false);
+  const control = (
+    <Control
+      id={id}
+      className={as === 'select' ? s.select : s.input}
+      aria-describedby={hintId}
+      {...inputProps}
+      type={isPassword && reveal ? 'text' : inputProps.type}
+    >
+      {children}
+    </Control>
+  );
   return (
     <div className={cx(s.field, className)}>
       <label className={s.label} htmlFor={id}>{label}</label>
-      <Control
-        id={id}
-        className={as === 'select' ? s.select : s.input}
-        aria-describedby={hintId}
-        {...inputProps}
-      >
-        {children}
-      </Control>
+      {isPassword ? (
+        <div className={s.inputWrap}>
+          {control}
+          <button
+            type="button"
+            className={s.reveal}
+            onClick={() => setReveal((v) => !v)}
+            aria-label={reveal ? 'Hide password' : 'Show password'}
+            aria-controls={id}
+          >
+            {reveal ? 'Hide' : 'Show'}
+          </button>
+        </div>
+      ) : control}
       {hint && <span id={hintId} className={s.hint}>{hint}</span>}
     </div>
   );
@@ -217,6 +261,24 @@ export function Modal({ title = '', onClose, children = null, labelledBy = undef
         {children}
       </div>
     </div>
+  );
+}
+
+/** Confirmation for destructive actions (replaces window.confirm). */
+export function ConfirmDialog({ title, children = null, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = false, onConfirm, onCancel }) {
+  const [busy, setBusy] = useState(false);
+  const confirm = async () => {
+    setBusy(true);
+    try { await onConfirm(); } finally { setBusy(false); }
+  };
+  return (
+    <Modal title={title} onClose={busy ? () => {} : onCancel}>
+      {children && <div style={{ color: 'var(--ink-muted)', fontSize: 14.5, margin: '6px 0 20px' }}>{children}</div>}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+        <Button variant="secondary" onClick={onCancel} disabled={busy}>{cancelLabel}</Button>
+        <Button variant={danger ? 'dangerSolid' : 'primary'} onClick={confirm} loading={busy}>{confirmLabel}</Button>
+      </div>
+    </Modal>
   );
 }
 

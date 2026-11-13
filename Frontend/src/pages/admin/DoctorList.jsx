@@ -116,6 +116,8 @@ export default function DoctorList({ doctors, selectedId, onSelect, onToggleAvai
                       size="sm"
                       variant="danger"
                       aria-label={`Remove Dr. ${name}`}
+                      title={(d.current_queue_length ?? 0) > 0 ? 'Finish or close this doctor’s queue before removing them' : `Remove Dr. ${name}`}
+                      disabled={(d.current_queue_length ?? 0) > 0}
                       loading={busyId === `r${id}`}
                       onClick={() => run(`r${id}`, () => onRemove(d))}
                     >

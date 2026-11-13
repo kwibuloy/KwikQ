@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import DashboardLayout from '../layout/DashboardLayout';
-import { Button, Field, Notice, Panel, StatCard, StatusPill, TicketStub, Skeleton } from '../ui';
+import { Button, ConfirmDialog, EmptyState, ErrorState, Field, Notice, Panel, StatCard, StatusPill, TicketStub, Skeleton } from '../ui';
 import { IconBell, IconCheck, IconClock, IconDoctor, IconLogs, IconMail, IconPlus, IconQueue, IconRefresh, IconUsers } from '../ui/icons';
 import { doctorName } from '../ui/status';
 import { useAuth } from '../hooks/useAuth';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import {
   callNextPatient,
   clearAccessToken,
@@ -43,15 +44,26 @@ export default function AdminPage() {
   const [calledTicket, setCalledTicket] = useState(null);
   const [busy, setBusy] = useState('');
   const [addingDoctor, setAddingDoctor] = useState(false);
+  const [confirm, setConfirm] = useState(null); // { title, body, label, run }
+  useDocumentTitle(VIEWS[view].title);
 
   const { doctors, setDoctors, loading: doctorsLoading, error: doctorsError, reload: reloadDoctors } = useDoctors();
-  const { queue, logs, loading: queueLoading, error: queueError, reload: reloadQueue } = useDoctorQueue(selectedId);
-  const { invitations, loaded: invitesLoaded, reload: reloadInvites } = useInvitations();
+  const { queue, logs, loading: queueLoading, error: queueError, updatedAt, reload: reloadQueue } = useDoctorQueue(selectedId);
+  const { invitations, loaded: invitesLoaded, error: invitesError, reload: reloadInvites } = useInvitations();
 
-  // Default to the first doctor once the roster loads.
+  // Default to the first doctor once the roster loads; recover if the selected one was removed.
   useEffect(() => {
-    if (!selectedId && doctors.length) setSelectedId(String(doctors[0].doctor_id));
-  }, [doctors, selectedId]);
+    if (doctorsLoading) return;
+    const exists = doctors.some((d) => String(d.doctor_id) === String(selectedId));
+    if (!exists) setSelectedId(doctors.length ? String(doctors[0].doctor_id) : '');
+  }, [doctors, doctorsLoading, selectedId]);
+
+  // The "Now calling" banner only makes sense while that ticket is still in the called state.
+  useEffect(() => {
+    if (calledTicket == null || !updatedAt) return;
+    const still = queue.some((q) => q.ticket_number === calledTicket && q.status === 'called');
+    if (!still) setCalledTicket(null);
+  }, [queue, calledTicket, updatedAt]);
 
   const selected = doctors.find((d) => String(d.doctor_id) === String(selectedId));
   const counts = useMemo(() => ({
@@ -59,6 +71,7 @@ export default function AdminPage() {
     active: queue.filter((q) => q.status === 'called' || q.status === 'in-consultation').length,
     servedToday: logs.filter((l) => l.created_at && new Date(l.created_at).toDateString() === new Date().toDateString()).length,
     available: doctors.filter((d) => d.is_available).length,
+    called: queue.some((q) => q.status === 'called'),
   }), [queue, logs, doctors]);
 
   const setView = (key) => {
@@ -93,14 +106,16 @@ export default function AdminPage() {
     await reloadQueue({ silent: true });
   }, 'Called patient skipped.');
 
-  const handleCloseQueue = () => {
-    if (!window.confirm(`Remove everyone still waiting for Dr. ${doctorName(selected)}? They will need to rejoin.`)) return;
-    act('close', async () => {
+  const handleCloseQueue = () => setConfirm({
+    title: 'Close this queue?',
+    body: `All ${counts.waiting} patient${counts.waiting === 1 ? '' : 's'} still waiting for Dr. ${doctorName(selected)} will be removed and need to rejoin. Patients already called or in session are not affected.`,
+    label: 'Close queue',
+    run: () => act('close', async () => {
       const res = await closeQueueForDoctor(selectedId);
       await reloadQueue({ silent: true });
       return res;
-    }, (res) => `Queue closed. ${res?.removedCount ?? 0} waiting patient(s) removed.`);
-  };
+    }, (res) => `Queue closed. ${res?.removedCount ?? 0} waiting patient${res?.removedCount === 1 ? '' : 's'} removed.`),
+  });
 
   const handleToggle = (doc) => act('', async () => {
     const next = !doc.is_available;
@@ -108,14 +123,15 @@ export default function AdminPage() {
     setDoctors((prev) => prev.map((d) => (d.doctor_id === doc.doctor_id ? { ...d, is_available: next } : d)));
   }, `Dr. ${doctorName(doc)} is now ${doc.is_available ? 'away' : 'available'}.`);
 
-  const handleRemove = async (doc) => {
-    if (!window.confirm(`Remove Dr. ${doctorName(doc)}? This cannot be undone.`)) return;
-    await act('', async () => {
+  const handleRemove = (doc) => setConfirm({
+    title: `Remove Dr. ${doctorName(doc)}?`,
+    body: 'They will disappear from the patient list. Past visit records are kept. This can’t be undone.',
+    label: 'Remove doctor',
+    run: () => act('', async () => {
       await removeDoctor(doc.doctor_id);
-      if (String(doc.doctor_id) === String(selectedId)) setSelectedId('');
       await reloadDoctors();
-    }, `Dr. ${doctorName(doc)} removed.`);
-  };
+    }, `Dr. ${doctorName(doc)} removed.`),
+  });
 
   const handleCreateDoctor = async (form) => {
     const res = await createDoctor(form);
@@ -174,7 +190,7 @@ export default function AdminPage() {
     >
       <div className={s.stack}>
         {notice && <Notice kind={notice.kind} onDismiss={() => setNotice(null)}>{notice.text}</Notice>}
-        {doctorsError && <Notice kind="error">{doctorsError}</Notice>}
+        {doctorsError && doctors.length > 0 && <Notice kind="info">Couldn’t refresh the doctor list. Showing the last update.</Notice>}
 
         {view === 'queue' && (
           <>
@@ -196,9 +212,22 @@ export default function AdminPage() {
                   <Button variant="ghost" onClick={() => reloadQueue()} disabled={!selectedId} aria-label="Refresh queue">
                     <IconRefresh width={18} height={18} /> <span className={s.hideSm}>Refresh</span>
                   </Button>
-                  <Button variant="secondary" onClick={handleSkip} loading={busy === 'skip'} disabled={!selectedId}>Skip called</Button>
+                  <Button
+                    variant="secondary"
+                    onClick={handleSkip}
+                    loading={busy === 'skip'}
+                    disabled={!selectedId || !counts.called}
+                    title={counts.called ? undefined : 'Nobody has been called yet'}
+                  >
+                    Skip called
+                  </Button>
                   <Button variant="danger" onClick={handleCloseQueue} loading={busy === 'close'} disabled={!selectedId || !counts.waiting}>Close queue</Button>
-                  <Button onClick={handleCallNext} loading={busy === 'call'} disabled={!selectedId || !counts.waiting}>
+                  <Button
+                    onClick={handleCallNext}
+                    loading={busy === 'call'}
+                    disabled={!selectedId || !counts.waiting || !selected?.is_available}
+                    title={selected && !selected.is_available ? 'This doctor is set to away' : !counts.waiting ? 'Nobody is waiting' : undefined}
+                  >
                     <IconBell width={18} height={18} /> Call next
                   </Button>
                 </div>
@@ -214,9 +243,23 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {queueError && <Notice kind="error">{queueError}</Notice>}
+              {updatedAt && (
+                <p className={s.updated}>
+                  {queueError ? 'Couldn’t refresh. Last updated ' : 'Updated '}
+                  {updatedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}
+                </p>
+              )}
               {doctorsLoading || queueLoading ? (
                 <Skeleton height={180} />
+              ) : !doctors.length && doctorsError ? (
+                <ErrorState title="We couldn’t load your doctors" onRetry={reloadDoctors}>{doctorsError}</ErrorState>
+              ) : !doctors.length ? (
+                <EmptyState icon={<IconDoctor />} title="Add a doctor to open a queue">
+                  Each doctor gets their own line.{' '}
+                  <button type="button" className={s.linkBtn} onClick={() => setAddingDoctor(true)}>Add your first doctor</button>
+                </EmptyState>
+              ) : queueError && !updatedAt ? (
+                <ErrorState title="We couldn’t load this queue" onRetry={() => reloadQueue()}>{queueError}</ErrorState>
               ) : selectedId ? (
                 <QueueTable
                   queue={queue}
@@ -235,7 +278,9 @@ export default function AdminPage() {
             subtitle={`${doctors.length} doctor${doctors.length === 1 ? '' : 's'} · ${counts.available} available`}
             actions={<Button onClick={() => setAddingDoctor(true)}><IconPlus width={18} height={18} /> Add doctor</Button>}
           >
-            {doctorsLoading ? <Skeleton height={200} /> : (
+            {doctorsLoading ? <Skeleton height={200} /> : !doctors.length && doctorsError ? (
+              <ErrorState title="We couldn’t load your doctors" onRetry={reloadDoctors}>{doctorsError}</ErrorState>
+            ) : (
               <DoctorList
                 doctors={doctors}
                 selectedId={selectedId}
@@ -260,18 +305,33 @@ export default function AdminPage() {
               <InviteForm onInvite={async (email) => { await inviteAdmin(email); await reloadInvites(); }} />
             </Panel>
             <Panel title="Pending" subtitle="Codes are single-use and disappear once claimed.">
+              {invitesError && !invitations.length ? (
+                <ErrorState title="We couldn’t load invitations" onRetry={reloadInvites}>{invitesError}</ErrorState>
+              ) : (
               <Invitations
                 invitations={invitations}
                 loaded={invitesLoaded}
                 filter={search}
                 onRevoke={(email) => act('', async () => { await revokeInvitation(email); await reloadInvites(); }, `Invitation for ${email} revoked.`)}
               />
+              )}
             </Panel>
           </>
         )}
       </div>
 
       {addingDoctor && <AddDoctorModal onClose={() => setAddingDoctor(false)} onCreate={handleCreateDoctor} />}
+      {confirm && (
+        <ConfirmDialog
+          title={confirm.title}
+          confirmLabel={confirm.label}
+          danger
+          onCancel={() => setConfirm(null)}
+          onConfirm={async () => { await confirm.run(); setConfirm(null); }}
+        >
+          {confirm.body}
+        </ConfirmDialog>
+      )}
     </DashboardLayout>
   );
 }

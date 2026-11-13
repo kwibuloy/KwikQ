@@ -86,6 +86,20 @@ describe.skipIf(!TEST_DB)('with a real database', () => {
         expect(responses.filter((r) => r.status === 201)).toHaveLength(1);
     });
 
+    it('patient status keeps showing the ticket while the visit is in progress', async () => {
+        const { rows } = await db.query(
+            `INSERT INTO doctors (doctor_first_name, doctor_last_name, specialization, room_number) VALUES ('D', 'R', 'GP', '4') RETURNING doctor_id`,
+        );
+        const [patient] = await makePatients(1);
+        await db.query(
+            `INSERT INTO queues (user_id, doctor_id, ticket_number, status) VALUES ($1, $2, 3, 'in-consultation')`,
+            [patient, rows[0].doctor_id],
+        );
+        const res = await request(app).get('/api/queue/patient-status').set('Authorization', `Bearer ${patient}`);
+        expect(res.status).toBe(200);
+        expect(res.body).toMatchObject({ ticket_number: 3, status: 'in-consultation', room_number: '4' });
+    });
+
     it('the unique index rejects a duplicate ticket number', async () => {
         const { rows } = await db.query(
             `INSERT INTO doctors (doctor_first_name, doctor_last_name, specialization) VALUES ('D', 'R', 'GP') RETURNING doctor_id`,

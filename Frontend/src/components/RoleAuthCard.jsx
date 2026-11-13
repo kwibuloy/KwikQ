@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { clearAccessToken, getAccessToken, getUserRole, login, register } from '../services/api';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { clearAccessToken, getAccessToken, getUserRole, login, register, takeSignOutReason } from '../services/api';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { Button, Field, Notice } from '../ui';
 import AuthShell from '../pages/auth/AuthShell';
 import s from '../pages/auth/auth.module.css';
@@ -25,11 +26,20 @@ export default function RoleAuthCard({
   defaultEmail = '',
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isLogin, setIsLogin] = useState(!forceRegisterMode);
   const [form, setForm] = useState({ firstName: '', lastName: '', email: defaultEmail, password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
+  // A message handed over by the previous screen (e.g. "account created"), else why we signed you out.
+  const [message, setMessage] = useState(() => location.state?.message || '');
+  const [reason] = useState(() => (location.state?.message ? null : takeSignOutReason()));
+  const shownTitle = !isLogin && registerTitle ? registerTitle : title;
+  useDocumentTitle(shownTitle);
+  // After sign-in, return to the page that sent the user here (same role area only).
+  const fromPath = location.state?.from?.pathname;
+  const target = fromPath && fromPath.startsWith(redirectTo) ? `${fromPath}${location.state.from.search || ''}` : redirectTo;
+  const roleLabel = (r) => (r === 'admin' ? 'staff' : r);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   // Already signed in with this role? Go straight to the dashboard.
@@ -48,11 +58,11 @@ export default function RoleAuthCard({
         if (result?.role !== role) {
           clearAccessToken();
           setError(result?.role
-            ? `This account is a ${result.role} account. Use the ${result.role} sign-in instead.`
+            ? `This is a ${roleLabel(result.role)} account. Use the ${roleLabel(result.role)} sign-in instead.`
             : 'We could not verify your account. Please try again.');
           return;
         }
-        navigate(redirectTo, { replace: true });
+        navigate(target, { replace: true });
         return;
       }
       await register({ ...form, role, invitationCode });
@@ -72,10 +82,11 @@ export default function RoleAuthCard({
   return (
     <AuthShell
       eyebrow={eyebrow}
-      title={!isLogin && registerTitle ? registerTitle : title}
+      title={shownTitle}
       subtitle={!isLogin && registerSubtitle ? registerSubtitle : subtitle}
       back={{ to: backLinkTo, label: backLinkLabel }}
     >
+      {reason && !error && <Notice kind="info">{reason}</Notice>}
       <form onSubmit={onSubmit} className={s.form} noValidate={false}>
         {showRegister && (
           <div className={s.row2}>

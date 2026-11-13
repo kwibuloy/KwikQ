@@ -21,7 +21,10 @@ export default function AdminRegisterPage() {
 
   const handleRegisterSuccess = () => {
     Object.values(KEYS).forEach((k) => sessionStorage.removeItem(k));
-    navigate('/admin/auth', { replace: true });
+    navigate('/admin/auth', {
+      replace: true,
+      state: { message: 'Staff account created. Confirm your email from the link we sent, then sign in here.' },
+    });
   };
 
   return (
