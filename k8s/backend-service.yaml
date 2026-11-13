@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kwikq-backend-svc
+  labels:
+    app: kwikq-backend
+spec:
+  type: ClusterIP
+  selector:
+    app: kwikq-backend
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

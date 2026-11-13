@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kwikq-backend
+  labels:
+    app: kwikq-backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: kwikq-backend
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: kwikq-backend
+    spec:
+      containers:
+        - name: api
+          image: kwikq-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 5000
+          env:
+            - name: PORT
+              value: "5000"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: kwikq-database-credentials
+                  key: DATABASE_URL
+            - name: DB_SSL_CA
+              valueFrom:
+                secretKeyRef:
+                  name: kwikq-database-credentials
+                  key: DB_SSL_CA
+                  optional: true
+            - name: CORS_ORIGINS
+              value: "http://localhost:8080,http://localhost:30080"
+            - name: SUPABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: kwikq-supabase-credentials
+                  key: SUPABASE_URL
+            - name: SUPABASE_ANON_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kwikq-supabase-credentials
+                  key: SUPABASE_ANON_KEY
+            - name: RESEND_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: kwikq-resend-credentials
+                  key: RESEND_API_KEY
+            - name: EMAIL_FROM
+              valueFrom:
+                secretKeyRef:
+                  name: kwikq-resend-credentials
+                  key: EMAIL_FROM
+            - name: APP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: kwikq-resend-credentials
+                  key: APP_URL
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"

@@ -1,0 +1,55 @@
+.stack { display: grid; gap: 20px; }
+
+.stats {
+  display: grid; gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+.toolbar {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.toolbarActions { display: flex; gap: 8px; flex-wrap: wrap; }
+.picker { min-width: min(320px, 100%); }
+
+.calling {
+  display: flex; align-items: center; gap: 16px;
+  padding: 14px 16px; margin-bottom: 16px;
+  border-radius: var(--radius); background: var(--accent-soft); color: var(--accent-soft-ink);
+  animation: pop .3s var(--ease);
+}
+.callingLabel { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.callingText { font-size: 14px; color: var(--ink-2); }
+@keyframes pop { from { transform: scale(.97); opacity: 0; } }
+
+.rowSelected td { background: color-mix(in srgb, var(--accent-soft) 55%, transparent); }
+.rowActions { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.docCell { display: inline-flex; align-items: center; gap: 12px; }
+.docAvatar {
+  flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px;
+  background: var(--surface-3); color: var(--ink-2); font-weight: 700; font-size: 13px;
+}
+
+.formGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 18px; }
+.span2 { grid-column: 1 / -1; }
+.formActions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
+.muted { color: var(--ink-muted); font-size: 14px; }
+
+.inviteForm { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.grow { flex: 1 1 280px; }
+.inviteBtn { margin-top: 25px; }
+.full { flex-basis: 100%; }
+.email { word-break: break-all; }
+
+@media (max-width: 640px) {
+  .stats { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .toolbarActions { width: 100%; }
+  .toolbarActions > * { flex: 1 1 auto; }
+  .hideSm { display: none; }
+  .formGrid { grid-template-columns: 1fr; }
+  .inviteBtn { margin-top: 0; width: 100%; }
+  .rowActions { justify-content: flex-start; }
+}
+@media (max-width: 330px) {
+  .stats { grid-template-columns: 1fr; }
+}

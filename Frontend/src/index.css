@@ -1,0 +1,163 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+/* ── KwikQ design tokens ─────────────────────────────────────────────
+   One accent (signal blue) on soft neutrals. Status colours are only
+   used inside pills/badges, always paired with text. */
+:root {
+  color-scheme: light;
+
+  --bg:            #f5f6f8;
+  --surface:       #ffffff;
+  --surface-2:     #f0f2f5;
+  --surface-3:     #e7eaef;
+  --border:        #e3e6eb;
+  --border-strong: #cdd2da;
+
+  --ink:           #161a23;
+  --ink-2:         #3c4352;
+  --ink-muted:     #5f6878;   /* 5.6:1 on --surface */
+
+  --accent:        #2f4fe0;   /* 5.9:1 on white */
+  --accent-hover:  #2541c4;
+  --accent-ink:    #ffffff;
+  --accent-soft:   #e8ecfd;
+  --accent-soft-ink: #2440c0;
+
+  --ok-bg:   #e3f5ec;  --ok-ink:   #146c43;
+  --warn-bg: #fdf1dc;  --warn-ink: #8a5300;
+  --info-bg: #e6f0fd;  --info-ink: #1d5bb8;
+  --live-bg: #efe8fd;  --live-ink: #5b33b8;
+  --bad-bg:  #fde8e8;  --bad-ink:  #b42318;
+  --mute-bg: #eceef2;  --mute-ink: #4b5363;
+
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+  --shadow-sm: 0 1px 2px rgb(16 24 40 / 0.05);
+  --shadow:    0 1px 2px rgb(16 24 40 / 0.04), 0 6px 20px rgb(16 24 40 / 0.06);
+  --shadow-lg: 0 10px 40px rgb(16 24 40 / 0.12);
+  --scrim:     rgb(14 18 27 / 0.5);
+
+  --radius-lg: 20px;
+  --radius:    14px;
+  --radius-sm: 10px;
+  --radius-full: 999px;
+
+  --font-display: 'Bricolage Grotesque', 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --sidebar-w: 248px;
+  --gutter: clamp(16px, 3vw, 32px);
+  --ease: cubic-bezier(.2, .7, .2, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg:            #0f1218;
+    --surface:       #161a22;
+    --surface-2:     #1c212b;
+    --surface-3:     #252b37;
+    --border:        #262c38;
+    --border-strong: #353d4c;
+    --ink:           #eef0f4;
+    --ink-2:         #c9ced8;
+    --ink-muted:     #9aa2b1;
+    --accent:        #7b93ff;
+    --accent-hover:  #93a7ff;
+    --accent-ink:    #0b1030;
+    --accent-soft:   #1e2650;
+    --accent-soft-ink: #b9c6ff;
+    --ok-bg:   #12301f;  --ok-ink:   #7fdcaa;
+    --warn-bg: #3a2a0c;  --warn-ink: #f5c26b;
+    --info-bg: #13294a;  --info-ink: #8cb8ff;
+    --live-bg: #2a1d4d;  --live-ink: #c4adff;
+    --bad-bg:  #3d1716;  --bad-ink:  #ffaca5;
+    --mute-bg: #232833;  --mute-ink: #b4bac6;
+    --shadow-sm: none;
+    --shadow:    0 1px 0 rgb(255 255 255 / 0.03) inset, 0 8px 24px rgb(0 0 0 / 0.3);
+    --shadow-lg: 0 16px 48px rgb(0 0 0 / 0.5);
+    --scrim:     rgb(0 0 0 / 0.6);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg:            #0f1218;
+  --surface:       #161a22;
+  --surface-2:     #1c212b;
+  --surface-3:     #252b37;
+  --border:        #262c38;
+  --border-strong: #353d4c;
+  --ink:           #eef0f4;
+  --ink-2:         #c9ced8;
+  --ink-muted:     #9aa2b1;
+  --accent:        #7b93ff;
+  --accent-hover:  #93a7ff;
+  --accent-ink:    #0b1030;
+  --accent-soft:   #1e2650;
+  --accent-soft-ink: #b9c6ff;
+  --ok-bg:   #12301f;  --ok-ink:   #7fdcaa;
+  --warn-bg: #3a2a0c;  --warn-ink: #f5c26b;
+  --info-bg: #13294a;  --info-ink: #8cb8ff;
+  --live-bg: #2a1d4d;  --live-ink: #c4adff;
+  --bad-bg:  #3d1716;  --bad-ink:  #ffaca5;
+  --mute-bg: #232833;  --mute-ink: #b4bac6;
+  --shadow-sm: none;
+  --shadow:    0 1px 0 rgb(255 255 255 / 0.03) inset, 0 8px 24px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 16px 48px rgb(0 0 0 / 0.5);
+  --scrim:     rgb(0 0 0 / 0.6);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { background: var(--bg); -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+#root { min-height: 100vh; display: flex; flex-direction: column; }
+
+h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.02em; line-height: 1.15; color: var(--ink); }
+
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+
+a { color: var(--accent); text-underline-offset: 3px; }
+a:hover { color: var(--accent-hover); }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+::selection { background: var(--accent-soft); color: var(--ink); }
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0 0 0 0);
+  white-space: nowrap; border: 0; padding: 0; margin: -1px;
+}
+
+.skip-link {
+  position: absolute; left: 12px; top: -48px; z-index: 100;
+  background: var(--accent); color: var(--accent-ink);
+  padding: 10px 14px; border-radius: var(--radius-sm); font-weight: 600;
+  text-decoration: none; transition: top .15s var(--ease);
+}
+.skip-link:focus { top: 12px; color: var(--accent-ink); }
+
+.tabular { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
