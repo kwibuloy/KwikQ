@@ -1,8 +1,10 @@
 import { useEffect, useId, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { signOutLocal } from '../services/api';
 import { Logo, IconButton } from '../ui';
 import ThemeToggle from '../ui/ThemeToggle';
 import { IconLogout, IconMenu, IconSearch, IconClose } from '../ui/icons';
-import { initials } from '../ui/status';
+import { initials } from '../ui/format';
 import s from './DashboardLayout.module.css';
 
 /**
@@ -19,11 +21,14 @@ export default function DashboardLayout({
   subtitle = '',
   search = null,
   user = null,
-  onSignOut,
-  headerExtra = null,
   children = null,
 }) {
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
+  const signOut = () => {
+    signOutLocal();
+    navigate('/login', { replace: true });
+  };
   const searchId = useId();
 
   useEffect(() => {
@@ -79,7 +84,7 @@ export default function DashboardLayout({
               </span>
             </div>
           )}
-          <button type="button" className={s.signOut} onClick={onSignOut}>
+          <button type="button" className={s.signOut} onClick={signOut}>
             <IconLogout /> Sign out
           </button>
         </div>
@@ -109,7 +114,6 @@ export default function DashboardLayout({
                 />
               </div>
             )}
-            {headerExtra}
             <ThemeToggle />
           </div>
         </header>

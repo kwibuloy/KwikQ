@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { joinQueue } from '../../services/api';
 import { Button, Modal, Notice, TicketStub } from '../../ui';
-import { doctorName } from '../../ui/status';
+import { doctorName } from '../../ui/format';
 import s from './patient.module.css';
 
 export default function JoinQueueModal({ doctor, onClose, onJoined }) {

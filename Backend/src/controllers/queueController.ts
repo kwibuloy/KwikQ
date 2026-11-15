@@ -1,9 +1,14 @@
 import {Request, Response} from 'express';
 import { query, withTransaction } from '../config/database.js';
 import { isPositiveInt } from '../middleware/validate.js';
+import { pgCode, serverError } from '../utils/http.js';
 
 /** Clinic-local calendar day used for daily ticket numbering. */
 const CLINIC_TZ = 'Asia/Singapore';
+
+/** SQL condition: the timestamp column falls on today's date in clinic time. Constants only, no user input. */
+const isToday = (column: string) =>
+    `(${column} AT TIME ZONE '${CLINIC_TZ}')::date = (CURRENT_TIMESTAMP AT TIME ZONE '${CLINIC_TZ}')::date`;
 
 export const getDoctors = async (req: Request, res: Response) => {
     try {
@@ -24,7 +29,7 @@ export const getDoctors = async (req: Request, res: Response) => {
                     doctor_id,
                     COUNT(*) FILTER (WHERE status IN ('waiting','called','in-consultation'))::int AS current_queue_length
                 FROM queues
-                WHERE (created_at AT TIME ZONE 'Asia/Singapore')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')::date
+                WHERE ${isToday('created_at')}
                 GROUP BY doctor_id
             ) qs ON qs.doctor_id = d.doctor_id;
         `);
@@ -35,8 +40,7 @@ export const getDoctors = async (req: Request, res: Response) => {
             estimated_wait_minutes: Number(r.estimated_wait_minutes) || 0,
         })));
     } catch (err) {
-        console.error('Error fetching doctors:', err);
-        res.status(500).json({ error: 'Internal Server Error' });
+        return serverError(res, 'Error fetching doctors:', err);
     }
 }
 
@@ -106,11 +110,10 @@ export const joinQueue = async (req: Request, res: Response) => {
 
         return res.status(outcome.status).json(outcome.body);
     } catch (err) {
-        if ((err as { code?: string })?.code === '23505') {
+        if (pgCode(err) === '23505') {
             return res.status(409).json({ error: 'Ticket conflict, please try again' });
         }
-        console.error('Error joining queue:', err instanceof Error ? err.message : err);
-        return res.status(500).json({ error: 'Internal Server Error' });
+        return serverError(res, 'Error joining queue:', err);
     }
 };
 
@@ -124,21 +127,19 @@ export const getAdminQueue = async (req: Request, res: Response) => {
                 q.ticket_number,
                 CONCAT(u.user_first_name, ' ', u.user_last_name) AS patient_name,
                 q.status,
-                TO_CHAR(q.created_at AT TIME ZONE 'Asia/Singapore', 'HH12:MI AM') as arrival_time
+                TO_CHAR(q.created_at AT TIME ZONE '${CLINIC_TZ}', 'HH12:MI AM') as arrival_time
             FROM queues q
             JOIN users u ON q.user_id = u.user_id
             WHERE q.doctor_id = $1
                 AND q.status IN ('waiting', 'called', 'in-consultation')
-                AND (q.created_at AT TIME ZONE 'Asia/Singapore')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')::date
+                AND ${isToday('q.created_at')}
             ORDER BY q.created_at ASC;
         `;
 
         const result = await query(sql, [doctorId]);
-        // always return an array (possibly empty) with 200 status
-        return res.status(200).json(result.rows || []);
+        return res.status(200).json(result.rows);
     } catch (error) {
-        console.error('Error fetching admin queue:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+        return serverError(res, 'Error fetching admin queue:', error);
     }
 }
 
@@ -153,7 +154,8 @@ export const getAdminPatientLogs = async (req: Request, res: Response) => {
                 q.status,
                 q.created_at,
                 CONCAT(u.user_first_name, ' ', u.user_last_name) AS patient_name,
-                TO_CHAR(q.created_at AT TIME ZONE 'Asia/Singapore', 'HH12:MI AM') as served_time
+                -- served_time is the check-in (join) time; the UI labels it "Checked in".
+                TO_CHAR(q.created_at AT TIME ZONE '${CLINIC_TZ}', 'HH12:MI AM') as served_time
             FROM queues q
             JOIN users u ON q.user_id = u.user_id
             WHERE q.doctor_id = $1
@@ -162,10 +164,9 @@ export const getAdminPatientLogs = async (req: Request, res: Response) => {
         `;
 
         const result = await query(sql, [doctorId]);
-        return res.status(200).json(result.rows || []);
+        return res.status(200).json(result.rows);
     } catch (error) {
-        console.error('Error fetching admin patient logs:', error);
-        return res.status(500).json({ error: 'Internal Server Error' });
+        return serverError(res, 'Error fetching admin patient logs:', error);
     }
 }
 
@@ -181,7 +182,7 @@ export const callNextPatient = async (req: Request, res: Response) => {
                 FROM queues
                 WHERE doctor_id = $1
                     AND status = 'waiting'
-                    AND (created_at AT TIME ZONE 'Asia/Singapore')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')::date
+                    AND ${isToday('created_at')}
                 ORDER BY ticket_number ASC
                 LIMIT 1
             )
@@ -199,8 +200,7 @@ export const callNextPatient = async (req: Request, res: Response) => {
             data: result.rows[0]
         });
     } catch (err) {
-        console.error('Error calling next patient:', err);
-        res.status(500).json({ error: 'Internal Server Error' });
+        return serverError(res, 'Error calling next patient:', err);
     }
 }
 
@@ -224,13 +224,13 @@ export const getPatientStatus = async (req: Request, res: Response) => {
                     WHERE q2.doctor_id = q.doctor_id
                       AND q2.status = 'waiting'
                       AND q2.ticket_number < q.ticket_number
-                      AND (q2.created_at AT TIME ZONE 'Asia/Singapore')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')::date
+                      AND ${isToday('q2.created_at')}
                 ) AS position_in_queue
             FROM queues q
             LEFT JOIN doctors d ON q.doctor_id = d.doctor_id
             WHERE q.user_id = $1
               AND q.status IN ('waiting', 'called', 'in-consultation')
-              AND (q.created_at AT TIME ZONE 'Asia/Singapore')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')::date
+              AND ${isToday('q.created_at')}
             ORDER BY q.created_at DESC
             LIMIT 1;
         `;
@@ -243,8 +243,7 @@ export const getPatientStatus = async (req: Request, res: Response) => {
 
         res.status(200).json(result.rows[0]);
     } catch (err) {
-        console.error('Error getting patient status:', err);
-        res.status(500).json({ error: 'Internal Server Error' });
+        return serverError(res, 'Error getting patient status:', err);
     }
 }
 
@@ -258,7 +257,7 @@ export const cancelQueue = async (req: Request, res: Response) => {
                 SELECT queue_id FROM queues
                 WHERE user_id = $1
                   AND status = 'waiting'
-                  AND (created_at AT TIME ZONE 'Asia/Singapore')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')::date
+                  AND ${isToday('created_at')}
                 ORDER BY created_at ASC
                 LIMIT 1
             )
@@ -270,8 +269,7 @@ export const cancelQueue = async (req: Request, res: Response) => {
         }
         return res.status(200).json({ message: 'Queue cancelled successfully', data: result.rows[0] });
     } catch (err) {
-        console.error('Error cancelling queue:', err);
-        return res.status(500).json({ error: 'Internal Server Error' });
+        return serverError(res, 'Error cancelling queue:', err);
     }
 }
 
@@ -294,10 +292,9 @@ export const getQueueHistory = async (req: Request, res: Response) => {
             ORDER BY q.created_at DESC;
         `;
         const result = await query(sql, [patientId]);
-        return res.status(200).json(result.rows || []);
+        return res.status(200).json(result.rows);
     } catch (err) {
-        console.error('Error fetching queue history:', err && (err as Error).message ? (err as Error).message : err);
-        return res.status(500).json({ error: 'Internal Server Error' });
+        return serverError(res, 'Error fetching queue history:', err);
     }
 }
 
@@ -317,8 +314,7 @@ export const startSession = async (req: Request, res: Response) => {
         }
         return res.status(200).json({ message: 'Session started', data: result.rows[0] });
     } catch (err) {
-        console.error('Error starting session:', err);
-        return res.status(500).json({ error: 'Internal Server Error' });
+        return serverError(res, 'Error starting session:', err);
     }
 }
 
@@ -338,8 +334,7 @@ export const completeSession = async (req: Request, res: Response) => {
         }
         return res.status(200).json({ message: 'Session completed', data: result.rows[0] });
     } catch (err) {
-        console.error('Error completing session:', err);
-        return res.status(500).json({ error: 'Internal Server Error' });
+        return serverError(res, 'Error completing session:', err);
     }
 }
 
@@ -351,7 +346,7 @@ export const skipCurrentPatient = async (req: Request, res: Response) => {
             FROM queues
             WHERE doctor_id = $1
               AND status IN ('called', 'in-consultation')
-              AND (created_at AT TIME ZONE 'Asia/Singapore')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')::date
+              AND ${isToday('created_at')}
             ORDER BY ticket_number ASC
             LIMIT 1;
         `;
@@ -384,12 +379,11 @@ export const skipCurrentPatient = async (req: Request, res: Response) => {
 
         return res.status(200).json({ message: 'Patient skipped', data: result.rows[0] });
     } catch (err) {
-        console.error('Error skipping patient:', err);
-        return res.status(500).json({ error: 'Internal Server Error' });
+        return serverError(res, 'Error skipping patient:', err);
     }
 }
 
-export const closeCurrentPatient = async (req: Request, res: Response) => {
+export const closeWaitingQueue = async (req: Request, res: Response) => {
     const { doctorId } = req.params;
     try {
         const sql = `
@@ -397,7 +391,7 @@ export const closeCurrentPatient = async (req: Request, res: Response) => {
             SET status = 'removed'
             WHERE doctor_id = $1
               AND status = 'waiting'
-              AND (created_at AT TIME ZONE 'Asia/Singapore')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Singapore')::date
+              AND ${isToday('created_at')}
             RETURNING queue_id, ticket_number, user_id, status;
         `;
         const result = await query(sql, [doctorId]);
@@ -406,8 +400,7 @@ export const closeCurrentPatient = async (req: Request, res: Response) => {
         }
         return res.status(200).json({ message: 'Queue closed: waiting patients removed', data: result.rows, removedCount: result.rowCount });
     } catch (err) {
-        console.error('Error closing patient:', err);
-        return res.status(500).json({ error: 'Internal Server Error' });
+        return serverError(res, 'Error closing queue:', err);
     }
 }
 
@@ -437,7 +430,6 @@ export const updateDoctorAvailability = async (req: Request, res: Response) => {
             doctor: result.rows[0],
         });
     } catch (err) {
-        console.error('Error updating doctor availability:', err);
-        return res.status(500).json({ error: 'Internal Server Error' });
+        return serverError(res, 'Error updating doctor availability:', err);
     }
 }

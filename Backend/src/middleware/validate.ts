@@ -10,3 +10,11 @@ export const validateDoctorIdParam = (_req: Request, res: Response, next: NextFu
     if (!isPositiveInt(value)) return res.status(400).json({ error: 'Invalid doctor id' });
     next();
 };
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** router.param handler: queue ids are integers in production (uuid in older schemas). */
+export const validateQueueIdParam = (_req: Request, res: Response, next: NextFunction, value: string) => {
+    if (!isPositiveInt(value) && !UUID.test(value)) return res.status(400).json({ error: 'Invalid queue id' });
+    next();
+};

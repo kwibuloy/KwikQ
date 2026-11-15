@@ -63,3 +63,5 @@
 @media (max-width: 480px) {
   .row2 { grid-template-columns: 1fr; }
 }
+
+.actions { display: flex; gap: 12px; flex-wrap: wrap; }

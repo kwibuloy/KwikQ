@@ -1,4 +1,4 @@
--- Minimal schema used by the integration tests (tests/*.db.test.ts).
+-- Minimal schema used by the integration tests (tests/db.integration.test.ts).
 -- It mirrors the columns the backend queries; it is not a full production schema.
 DROP TABLE IF EXISTS doctor_ticket_counters, queues, admin_invitations, users, doctors CASCADE;
 

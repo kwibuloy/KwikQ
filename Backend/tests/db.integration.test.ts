@@ -44,6 +44,14 @@ describe.skipIf(!TEST_DB)('with a real database', () => {
         await db.query('TRUNCATE doctor_ticket_counters, queues, admin_invitations, users, doctors RESTART IDENTITY CASCADE');
     });
 
+    async function makeDoctor(room: string | null = null) {
+        const { rows } = await db.query(
+            `INSERT INTO doctors (doctor_first_name, doctor_last_name, specialization, room_number) VALUES ('D', 'R', 'GP', $1) RETURNING doctor_id`,
+            [room],
+        );
+        return rows[0].doctor_id;
+    }
+
     async function makePatients(n: number) {
         const ids = Array.from({ length: n }, () => randomUUID());
         for (const id of ids) {
@@ -58,10 +66,7 @@ describe.skipIf(!TEST_DB)('with a real database', () => {
     }
 
     it('concurrent joins get distinct, gap-free tickets', async () => {
-        const { rows } = await db.query(
-            `INSERT INTO doctors (doctor_first_name, doctor_last_name, specialization) VALUES ('D', 'R', 'GP') RETURNING doctor_id`,
-        );
-        const doctorId = rows[0].doctor_id;
+        const doctorId = await makeDoctor();
         const patients = await makePatients(25);
 
         const responses = await Promise.all(
@@ -74,26 +79,22 @@ describe.skipIf(!TEST_DB)('with a real database', () => {
     });
 
     it('one patient firing joins in parallel gets exactly one ticket', async () => {
-        const { rows } = await db.query(
-            `INSERT INTO doctors (doctor_first_name, doctor_last_name, specialization) VALUES ('D', 'R', 'GP') RETURNING doctor_id`,
-        );
+        const doctorId = await makeDoctor();
         const [patient] = await makePatients(1);
         const responses = await Promise.all(
             Array.from({ length: 8 }, () =>
-                request(app).post('/api/queue/join').set('Authorization', `Bearer ${patient}`).send({ doctorId: rows[0].doctor_id }),
+                request(app).post('/api/queue/join').set('Authorization', `Bearer ${patient}`).send({ doctorId }),
             ),
         );
         expect(responses.filter((r) => r.status === 201)).toHaveLength(1);
     });
 
     it('patient status keeps showing the ticket while the visit is in progress', async () => {
-        const { rows } = await db.query(
-            `INSERT INTO doctors (doctor_first_name, doctor_last_name, specialization, room_number) VALUES ('D', 'R', 'GP', '4') RETURNING doctor_id`,
-        );
+        const doctorId = await makeDoctor('4');
         const [patient] = await makePatients(1);
         await db.query(
             `INSERT INTO queues (user_id, doctor_id, ticket_number, status) VALUES ($1, $2, 3, 'in-consultation')`,
-            [patient, rows[0].doctor_id],
+            [patient, doctorId],
         );
         const res = await request(app).get('/api/queue/patient-status').set('Authorization', `Bearer ${patient}`);
         expect(res.status).toBe(200);
@@ -101,13 +102,11 @@ describe.skipIf(!TEST_DB)('with a real database', () => {
     });
 
     it('the unique index rejects a duplicate ticket number', async () => {
-        const { rows } = await db.query(
-            `INSERT INTO doctors (doctor_first_name, doctor_last_name, specialization) VALUES ('D', 'R', 'GP') RETURNING doctor_id`,
-        );
+        const doctorId = await makeDoctor();
         const [a, b] = await makePatients(2);
         const insert = `INSERT INTO queues (user_id, doctor_id, ticket_number, status) VALUES ($1, $2, 7, 'waiting')`;
-        await db.query(insert, [a, rows[0].doctor_id]);
-        await expect(db.query(insert, [b, rows[0].doctor_id])).rejects.toMatchObject({ code: '23505' });
+        await db.query(insert, [a, doctorId]);
+        await expect(db.query(insert, [b, doctorId])).rejects.toMatchObject({ code: '23505' });
     });
 
     it('an invitation code can only be used once, even concurrently', async () => {

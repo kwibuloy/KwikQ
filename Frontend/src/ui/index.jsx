@@ -1,13 +1,13 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import s from './ui.module.css';
-import { statusInfo } from './status';
+import { statusInfo } from './format';
 import { IconClose } from './icons';
 
 const cx = (...c) => c.filter(Boolean).join(' ');
 
 /* ── Brand ───────────────────────────────────────────── */
-export function LogoMark({ size = 32 }) {
+function LogoMark({ size = 32 }) {
   // A "Q" whose tail is a ticket stub: the queue and the ticket in one shape.
   return (
     <svg className={s.logoMark} width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" focusable="false">
@@ -68,22 +68,20 @@ export function TicketStub({ number, size = 'md', solid = false, label = 'Ticket
 }
 
 /* ── Layout blocks ───────────────────────────────────── */
-export function Panel({ title = '', subtitle = '', actions = null, children = null, className = '', bodyClassName = '', headingLevel = 2, id = undefined }) {
-  /** @type {any} */
-  const H = `h${headingLevel}`;
+export function Panel({ title = '', subtitle = '', actions = null, children = null, className = '' }) {
   const headingId = useId();
   return (
-    <section className={cx(s.panel, className)} aria-labelledby={title ? headingId : undefined} id={id}>
+    <section className={cx(s.panel, className)} aria-labelledby={title ? headingId : undefined}>
       {(title || actions) && (
         <header className={s.panelHead}>
           <div>
-            {title && <H id={headingId} className={s.panelTitle}>{title}</H>}
+            {title && <h2 id={headingId} className={s.panelTitle}>{title}</h2>}
             {subtitle && <p className={s.panelSub}>{subtitle}</p>}
           </div>
           {actions && <div className={s.panelActions}>{actions}</div>}
         </header>
       )}
-      <div className={cx(s.panelBody, bodyClassName)}>{children}</div>
+      <div className={s.panelBody}>{children}</div>
     </section>
   );
 }
@@ -200,29 +198,10 @@ export function Checkbox({ label, ...rest }) {
   );
 }
 
-export function Segmented({ label, options, value, onChange }) {
-  return (
-    <div className={s.segmented} role="tablist" aria-label={label}>
-      {options.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          role="tab"
-          aria-selected={value === o.value}
-          className={s.segment}
-          onClick={() => onChange(o.value)}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 /* ── Modal (focus is moved in and restored on close) ─── */
-export function Modal({ title = '', onClose, children = null, labelledBy = undefined }) {
+export function Modal({ title = '', onClose, children = null }) {
   const ref = useRef(null);
-  const fallbackId = useId();
+  const titleId = useId();
   useEffect(() => {
     const previous = /** @type {HTMLElement | null} */ (document.activeElement);
     ref.current?.focus();
@@ -251,13 +230,13 @@ export function Modal({ title = '', onClose, children = null, labelledBy = undef
         className={s.modal}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={labelledBy || fallbackId}
+        aria-labelledby={title ? titleId : undefined}
         tabIndex={-1}
       >
         <IconButton label="Close" className={s.modalClose} onClick={onClose}>
           <IconClose />
         </IconButton>
-        {title && <h2 id={fallbackId} style={{ fontSize: 22, marginBottom: 6, paddingRight: 40 }}>{title}</h2>}
+        {title && <h2 id={titleId} className={s.modalTitle}>{title}</h2>}
         {children}
       </div>
     </div>
@@ -273,8 +252,8 @@ export function ConfirmDialog({ title, children = null, confirmLabel = 'Confirm'
   };
   return (
     <Modal title={title} onClose={busy ? () => {} : onCancel}>
-      {children && <div style={{ color: 'var(--ink-muted)', fontSize: 14.5, margin: '6px 0 20px' }}>{children}</div>}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+      {children && <div className={s.confirmText}>{children}</div>}
+      <div className={s.confirmActions}>
         <Button variant="secondary" onClick={onCancel} disabled={busy}>{cancelLabel}</Button>
         <Button variant={danger ? 'dangerSolid' : 'primary'} onClick={confirm} loading={busy}>{confirmLabel}</Button>
       </div>

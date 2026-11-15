@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import { query } from '../config/database.js';
-import { sendAdminInvitationEmail } from '../services/emailService.js';
-import { createInvitation } from '../utils/invitation.js';
+import { EmailSendError, sendAdminInvitationEmail } from '../services/emailService.js';
+import { normalizeEmail, pgCode, serverError } from '../utils/http.js';
+import { AdminInvitationRow, createInvitation } from '../utils/invitation.js';
 
 async function inviteAndEmail(email: string) {
     const invitation = await createInvitation(email);
@@ -18,6 +19,15 @@ async function inviteAndEmail(email: string) {
     return invitation;
 }
 
+const EMAIL_FAILED = { error: 'The invitation email could not be sent. Please try again later.' };
+
+const toInvitationDto = (inv: AdminInvitationRow) => ({
+    invitation_id: inv.invitation_id,
+    email: inv.email,
+    created_at: inv.created_at,
+    expires_at: inv.expires_at,
+});
+
 export const inviteAdmin = async (req: Request, res: Response) => {
     try {
         const { email } = req.body;
@@ -26,7 +36,7 @@ export const inviteAdmin = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'email is required' });
         }
 
-        const normalizedEmail = String(email).trim().toLowerCase();
+        const normalizedEmail = normalizeEmail(email);
 
         const existingUserSql = `SELECT user_id, role FROM users WHERE LOWER(email) = $1`;
         const existingUserResult = await query(existingUserSql, [normalizedEmail]);
@@ -51,24 +61,18 @@ export const inviteAdmin = async (req: Request, res: Response) => {
 
         return res.status(201).json({
             message: 'Admin invitation created and email sent',
-            invitation: {
-                invitation_id: invitation.invitation_id,
-                email: invitation.email,
-                created_at: invitation.created_at,
-                expires_at: invitation.expires_at,
-            },
+            invitation: toInvitationDto(invitation),
         });
 
     } catch (err) {
-        console.error('Error creating admin invitation:', err instanceof Error ? err.message : err);
-        const message = err instanceof Error ? err.message : '';
-        if (message.includes('RESEND_API_KEY') || message.includes('Failed to send')) {
-            return res.status(503).json({ error: 'The invitation email could not be sent. Please try again later.' });
+        if (err instanceof EmailSendError) {
+            console.error('Error creating admin invitation:', err.message);
+            return res.status(503).json(EMAIL_FAILED);
         }
-        if ((err as { code?: string })?.code === '23505') {
+        if (pgCode(err) === '23505') {
             return res.status(409).json({ error: 'Invitation code conflict. Please try again.' });
         }
-        res.status(500).json({ error: 'Internal Server Error' });
+        return serverError(res, 'Error creating admin invitation:', err);
     }
 };
 
@@ -88,12 +92,11 @@ export const getPendingInvitations = async (req: Request, res: Response) => {
         const result = await query(sql);
 
         return res.status(200).json({
-            invitations: result.rows || []
+            invitations: result.rows
         });
 
     } catch (err) {
-        console.error('Error fetching pending invitations:', err);
-        res.status(500).json({ error: 'Internal Server Error' });
+        return serverError(res, 'Error fetching pending invitations:', err);
     }
 };
 
@@ -105,7 +108,7 @@ export const resendInvitation = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'email is required' });
         }
 
-        const normalizedEmail = String(email).trim().toLowerCase();
+        const normalizedEmail = normalizeEmail(email);
 
         const userCheckSql = `SELECT user_id FROM users WHERE LOWER(email) = $1`;
         const userCheckResult = await query(userCheckSql, [normalizedEmail]);
@@ -121,21 +124,15 @@ export const resendInvitation = async (req: Request, res: Response) => {
 
         return res.status(200).json({
             message: 'Invitation resent successfully',
-            invitation: {
-                invitation_id: invitation.invitation_id,
-                email: invitation.email,
-                created_at: invitation.created_at,
-                expires_at: invitation.expires_at,
-            },
+            invitation: toInvitationDto(invitation),
         });
 
     } catch (err) {
-        console.error('Error resending invitation:', err instanceof Error ? err.message : err);
-        const message = err instanceof Error ? err.message : '';
-        if (message.includes('RESEND_API_KEY') || message.includes('Failed to send')) {
-            return res.status(503).json({ error: 'The invitation email could not be sent. Please try again later.' });
+        if (err instanceof EmailSendError) {
+            console.error('Error resending invitation:', err.message);
+            return res.status(503).json(EMAIL_FAILED);
         }
-        res.status(500).json({ error: 'Internal Server Error' });
+        return serverError(res, 'Error resending invitation:', err);
     }
 };
 
@@ -147,7 +144,7 @@ export const revokeInvitation = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'email is required' });
         }
 
-        const normalizedEmail = String(email).trim().toLowerCase();
+        const normalizedEmail = normalizeEmail(email);
         const sql = `DELETE FROM admin_invitations WHERE LOWER(email) = $1 RETURNING invitation_id, email;`;
         const result = await query(sql, [normalizedEmail]);
 
@@ -161,8 +158,7 @@ export const revokeInvitation = async (req: Request, res: Response) => {
         });
 
     } catch (err) {
-        console.error('Error revoking invitation:', err);
-        res.status(500).json({ error: 'Internal Server Error' });
+        return serverError(res, 'Error revoking invitation:', err);
     }
 };
 
@@ -223,8 +219,7 @@ export const createDoctor = async (req: Request, res: Response) => {
             doctor: result.rows[0],
         });
     } catch (err) {
-        console.error('Error creating doctor:', err);
-        return res.status(500).json({ error: 'Internal Server Error' });
+        return serverError(res, 'Error creating doctor:', err);
     }
 };
 
@@ -263,13 +258,12 @@ export const deleteDoctor = async (req: Request, res: Response) => {
             doctor: result.rows[0],
         });
     } catch (err: unknown) {
-        if ((err as { code?: string })?.code === '23503') {
+        if (pgCode(err) === '23503') {
             return res.status(409).json({
                 error: 'Cannot remove doctor because related queue records still exist',
             });
         }
 
-        console.error('Error removing doctor:', err);
-        return res.status(500).json({ error: 'Internal Server Error' });
+        return serverError(res, 'Error removing doctor:', err);
     }
 };

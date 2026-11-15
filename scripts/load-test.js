@@ -9,8 +9,9 @@
  *   3. At least one doctor in the database
  *
  * USAGE:
- *   node load-test.js                          # test public endpoints only
- *   node load-test.js --token YOUR_JWT_TOKEN   # test all endpoints (auth required)
+ *   node scripts/load-test.js                          # public endpoints only
+ *   node scripts/load-test.js --token YOUR_JWT_TOKEN   # all endpoints (auth required)
+ *   API_URL=http://localhost:8080/api node scripts/load-test.js   # against the k8s deploy
  *
  * HOW TO GET YOUR TOKEN:
  *   Log in via the frontend, then open DevTools → Application → Local Storage
@@ -18,7 +19,7 @@
  *
  * OUTPUT:
  *   Prints per-endpoint stats: min, max, avg, median, p95, p99 response times,
- *   plus requests/sec throughput. Use these numbers in your resume bullets.
+ *   plus requests/sec throughput.
  */
 
 const BASE_URL = process.env.API_URL || 'http://localhost:5000/api';
@@ -183,13 +184,7 @@ async function main() {
       `  ${shortName.padEnd(40)}${s.avg.padStart(9)}${s.p95.padStart(9)}${s.rps.padStart(8)}`
     );
   }
-  console.log(`${'━'.repeat(60)}`);
-
-  console.log('\n📋 Use these numbers in your resume bullets! For example:');
-  if (summary.length > 0) {
-    const fastest = summary.reduce((a, b) => parseFloat(a.avg) < parseFloat(b.avg) ? a : b);
-    console.log(`   "Serves ${fastest.name.match(/\/\w[\w/-]*/)?.[0] || 'API requests'} in ${fastest.avg}ms avg (p95: ${fastest.p95}ms) at ${fastest.rps} req/sec"\n`);
-  }
+  console.log(`${'━'.repeat(60)}\n`);
 }
 
 main().catch(err => {

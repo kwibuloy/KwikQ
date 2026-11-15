@@ -9,7 +9,7 @@ export interface AdminInvitationRow {
     expires_at?: Date | null;
 }
 
-export function generateInvitationCode(): string {
+function generateInvitationCode(): string {
     return randomBytes(6).toString('hex').toUpperCase();
 }
 

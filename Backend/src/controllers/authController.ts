@@ -3,6 +3,7 @@ import { supabase } from '../config/supabase.js';
 import { query, withTransaction } from '../config/database.js';
 import { findInvitationByCode, isInvitationExpired, normalizeInvitationCode } from '../utils/invitation.js';
 import type { Role } from '../types/index.js';
+import { normalizeEmail, serverError } from '../utils/http.js';
 
 /** Thrown inside the register transaction to roll back and answer with a status. */
 class HttpError extends Error {
@@ -25,8 +26,7 @@ export const validateInvitationCode = async (req: Request, res: Response) => {
         }
         return res.status(200).json({ valid: true, email: invitation.email });
     } catch (err) {
-        console.error('Error validating invitation code:', err instanceof Error ? err.message : err);
-        return res.status(500).json({ error: 'Internal Server Error' });
+        return serverError(res, 'Error validating invitation code:', err);
     }
 };
 
@@ -58,7 +58,7 @@ export const register = async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'Invalid role requested' });
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmail = normalizeEmail(email);
     let user_first_name = String(firstName || '').trim();
     let user_last_name = String(lastName || '').trim();
 
@@ -130,8 +130,7 @@ export const register = async (req: Request, res: Response) => {
         if (err instanceof HttpError) {
             return res.status(err.status).json({ error: err.message, ...(err.code ? { code: err.code } : {}) });
         }
-        console.error('Registration error:', err instanceof Error ? err.message : err);
-        return res.status(500).json({ error: 'Internal Server Error' });
+        return serverError(res, 'Registration error:', err);
     }
 };
 
@@ -174,7 +173,6 @@ export const login = async (req: Request, res: Response) => {
             },
         });
     } catch (err) {
-        console.error('Login error:', err instanceof Error ? err.message : err);
-        return res.status(500).json({ error: 'Internal Server Error' });
+        return serverError(res, 'Login error:', err);
     }
 };

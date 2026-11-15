@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import DashboardLayout from '../layout/DashboardLayout';
-import { Button, ConfirmDialog, EmptyState, ErrorState, Field, Notice, Panel, StatCard, StatusPill, TicketStub, Skeleton } from '../ui';
-import { IconBell, IconCheck, IconClock, IconDoctor, IconLogs, IconMail, IconPlus, IconQueue, IconRefresh, IconUsers } from '../ui/icons';
-import { doctorName } from '../ui/status';
-import { useAuth } from '../hooks/useAuth';
-import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { useSearchParams } from 'react-router-dom';
+import DashboardLayout from '../../layout/DashboardLayout';
+import { Button, ConfirmDialog, EmptyState, ErrorState, Field, Notice, Panel, StatCard, StatusPill, TicketStub, Skeleton } from '../../ui';
+import { IconBell, IconCheck, IconClock, IconDoctor, IconLogs, IconMail, IconPlus, IconQueue, IconRefresh, IconUsers } from '../../ui/icons';
+import { doctorName } from '../../ui/format';
+import { useAuth } from '../../hooks/useAuth';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import {
   callNextPatient,
-  clearAccessToken,
   closeQueueForDoctor,
   completeSession,
   createDoctor,
@@ -18,13 +17,13 @@ import {
   setDoctorAvailability,
   skipPatient,
   startSession,
-} from '../services/api';
-import { useDoctorQueue, useDoctors, useInvitations } from './admin/useAdminData';
-import QueueTable from './admin/QueueTable';
-import DoctorList, { AddDoctorModal } from './admin/DoctorList';
-import PatientLogs from './admin/PatientLogs';
-import Invitations, { InviteForm } from './admin/Invitations';
-import s from './admin/admin.module.css';
+} from '../../services/api';
+import { useDoctorQueue, useDoctors, useInvitations } from './useAdminData';
+import QueueTable from './QueueTable';
+import DoctorList, { AddDoctorModal } from './DoctorList';
+import PatientLogs from './PatientLogs';
+import Invitations, { InviteForm } from './Invitations';
+import s from './admin.module.css';
 
 const VIEWS = {
   queue: { title: 'Live queue', subtitle: 'Call, start and complete visits as they happen.' },
@@ -34,7 +33,6 @@ const VIEWS = {
 };
 
 export default function AdminPage() {
-  const navigate = useNavigate();
   const { name } = useAuth();
   const [params, setParams] = useSearchParams();
   const view = VIEWS[params.get('view')] ? params.get('view') : 'queue';
@@ -143,11 +141,6 @@ export default function AdminPage() {
     setNotice({ kind: 'success', text: `Dr. ${doctorName(res?.doctor)} added.` });
   };
 
-  const handleSignOut = () => {
-    clearAccessToken();
-    navigate('/login', { replace: true });
-  };
-
   const doctorPicker = (
     <Field
       as="select"
@@ -189,7 +182,6 @@ export default function AdminPage() {
       subtitle={VIEWS[view].subtitle}
       search={{ value: search, onChange: setSearch, placeholder: searchPlaceholder, label: searchPlaceholder }}
       user={{ name, role: 'Admin' }}
-      onSignOut={handleSignOut}
     >
       <div className={s.stack}>
         {notice && <Notice kind={notice.kind} onDismiss={() => setNotice(null)}>{notice.text}</Notice>}

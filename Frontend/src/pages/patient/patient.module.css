@@ -110,6 +110,5 @@
 @keyframes shimmer { to { background-position: -200% 0; } }
 
 .gridNotice { margin-bottom: 14px; }
-.doctorBlocked { opacity: .55; }
 .doctorOff { margin-top: 12px; font-size: 13px; color: var(--ink-muted); }
 .ticketCard.ticketError { grid-template-columns: 1fr; min-height: 0; }

@@ -17,7 +17,6 @@ const db = vi.hoisted(() => ({
 vi.mock('../src/config/supabase.js', () => ({ supabase }));
 vi.mock('../src/config/database.js', () => ({
     query: db.query,
-    default: db.query,
     pool: {},
     withTransaction: async (fn: (client: { query: typeof db.clientQuery }) => unknown) => {
         db.clientQuery('BEGIN');
@@ -127,8 +126,8 @@ describe('admin-only routes refuse patients', () => {
         ['get', '/api/queue/admin/1'],
         ['get', '/api/queue/admin-history/1'],
         ['patch', '/api/admin/call-next/1'],
-        ['patch', '/api/admin/start-session/q1'],
-        ['patch', '/api/admin/complete-session/q1'],
+        ['patch', '/api/admin/start-session/1'],
+        ['patch', '/api/admin/complete-session/1'],
         ['patch', '/api/admin/skip/1'],
         ['patch', '/api/admin/close/1'],
         ['patch', '/api/admin/doctor-availability/1'],
@@ -222,6 +221,14 @@ describe('input validation and side effects', () => {
         const res = await request(app).get('/api/queue/admin/abc').set('Authorization', 'Bearer t');
         expect(res.status).toBe(400);
         expect(res.body.error).toBe('Invalid doctor id');
+    });
+
+    it('rejects a malformed queue id in the URL with 400', async () => {
+        supabase.auth.getUser.mockResolvedValue({ data: { user: fakeUser('a3') }, error: null });
+        dbRoleIs('admin');
+        const res = await request(app).patch('/api/admin/start-session/not-an-id').set('Authorization', 'Bearer t');
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('Invalid queue id');
     });
 
     it('rejects a non-numeric doctor id when joining with 400', async () => {

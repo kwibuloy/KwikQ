@@ -4,17 +4,20 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const ACCESS_TOKEN_KEY = 'access_token';
 const USER_ROLE_KEY = 'user_role';
 const USER_NAME_KEY = 'user_name';
+/** Fired on sign-in and sign-out so useAuth() re-reads the session. */
+export const AUTH_EVENT = 'auth-state-changed';
 
 export const getAccessToken = () => localStorage.getItem(ACCESS_TOKEN_KEY);
 export const getUserRole = () => localStorage.getItem(USER_ROLE_KEY);
 export const getUserName = () => localStorage.getItem(USER_NAME_KEY);
-export const setAccessToken = (token) => {
+const setAccessToken = (token) => {
   if (token) localStorage.setItem(ACCESS_TOKEN_KEY, token);
 };
-export const setUserRole = (role) => {
+const setUserRole = (role) => {
   if (role) localStorage.setItem(USER_ROLE_KEY, role);
 };
-export const clearAccessToken = () => {
+/** Sign out on this device: drop our session keys and Supabase's, then notify listeners. */
+export const signOutLocal = () => {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(USER_ROLE_KEY);
   localStorage.removeItem(USER_NAME_KEY);
@@ -24,7 +27,7 @@ export const clearAccessToken = () => {
     }
   });
   supabase.auth.signOut({ scope: 'local' }).catch(() => {});
-  window.dispatchEvent(new Event('auth-state-changed'));
+  window.dispatchEvent(new Event(AUTH_EVENT));
 };
 
 /** Why the user was signed out, shown once on the next sign-in screen. */
@@ -40,7 +43,7 @@ export const takeSignOutReason = () => {
 };
 
 /** An API failure with the HTTP status (0 = network/offline). */
-export class ApiError extends Error {
+class ApiError extends Error {
   constructor(message, status) {
     super(message);
     this.status = status;
@@ -86,7 +89,7 @@ async function apiFetch(path, options = {}) {
           ? 'Your session expired. Please sign in again.'
           : 'Your account no longer has access to that page. Please sign in again.');
       } catch { /* storage unavailable */ }
-      clearAccessToken();
+      signOutLocal();
     }
     const fallback = res.status === 429
       ? 'Too many attempts. Please wait a few minutes and try again.'
@@ -120,7 +123,7 @@ export const removeDoctor = (doctorId) =>
   });
 
 export const login = async (email, password) => {
-  clearAccessToken();
+  signOutLocal();
   await supabase.auth.signOut({ scope: 'local' });
 
   const data = await apiFetch('/auth/login', {
@@ -154,7 +157,7 @@ export const login = async (email, password) => {
     localStorage.removeItem(USER_ROLE_KEY);
   }
 
-  window.dispatchEvent(new Event('auth-state-changed'));
+  window.dispatchEvent(new Event(AUTH_EVENT));
   return { ...data, role };
 };
 

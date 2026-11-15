@@ -1,10 +1,11 @@
 import { Router } from 'express';
-import { callNextPatient, getAdminQueue, getAdminPatientLogs, getDoctors, getPatientStatus, joinQueue, cancelQueue, getQueueHistory, startSession, completeSession, skipCurrentPatient, closeCurrentPatient, updateDoctorAvailability } from '../controllers/queueController.js';
+import { callNextPatient, getAdminQueue, getAdminPatientLogs, getDoctors, getPatientStatus, joinQueue, cancelQueue, getQueueHistory, startSession, completeSession, skipCurrentPatient, closeWaitingQueue, updateDoctorAvailability } from '../controllers/queueController.js';
 import { authenticateUser, requireRole } from '../middleware/authMiddleware.js';
-import { validateDoctorIdParam } from '../middleware/validate.js';
+import { validateDoctorIdParam, validateQueueIdParam } from '../middleware/validate.js';
 
 const router = Router();
 router.param('doctorId', validateDoctorIdParam);
+router.param('queueId', validateQueueIdParam);
 
 router.get('/doctors', getDoctors);
 router.get('/queue/admin/:doctorId', authenticateUser, requireRole('admin'), getAdminQueue);
@@ -17,7 +18,7 @@ router.get('/queue/history', authenticateUser, getQueueHistory);
 router.patch('/admin/start-session/:queueId', authenticateUser, requireRole('admin'), startSession);
 router.patch('/admin/complete-session/:queueId', authenticateUser, requireRole('admin'), completeSession);
 router.patch('/admin/skip/:doctorId', authenticateUser, requireRole('admin'), skipCurrentPatient);
-router.patch('/admin/close/:doctorId', authenticateUser, requireRole('admin'), closeCurrentPatient);
+router.patch('/admin/close/:doctorId', authenticateUser, requireRole('admin'), closeWaitingQueue);
 router.patch('/admin/doctor-availability/:doctorId', authenticateUser, requireRole('admin'), updateDoctorAvailability);
 
 export default router;

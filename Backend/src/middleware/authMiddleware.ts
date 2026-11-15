@@ -1,10 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { supabase } from '../config/supabase.js';
 import { query } from '../config/database.js';
-import { ROLES, Role } from '../types/index.js';
-
-const isRole = (value: unknown): value is Role =>
-    typeof value === 'string' && (ROLES as readonly string[]).includes(value);
+import { isRole, Role } from '../types/index.js';
+import { serverError } from '../utils/http.js';
 
 /**
  * Verifies the Supabase access token, then loads the role from our own `users`
@@ -33,12 +31,11 @@ export const authenticateUser = async (req: Request, res: Response, next: NextFu
         req.userRole = role;
         next();
     } catch (err) {
-        console.error('Auth middleware error:', err instanceof Error ? err.message : err);
-        return res.status(500).json({ error: 'Internal Server Error' });
+        return serverError(res, 'Auth middleware error:', err);
     }
 };
 
-export const requireRoles = (allowedRoles: Role[]) => {
+const requireRoles = (allowedRoles: Role[]) => {
     return (req: Request, res: Response, next: NextFunction) => {
         if (!req.userRole) return res.status(401).json({ error: 'Authentication required.' });
         if (!allowedRoles.includes(req.userRole)) {

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button, EmptyState, StatusPill, TicketStub } from '../../ui';
 import { IconQueue } from '../../ui/icons';
-import { MINUTES_PER_PATIENT } from '../../ui/status';
+import { MINUTES_PER_PATIENT, matchesTerm, searchTerm } from '../../ui/format';
 import { t } from '../../ui/table';
 
 /** Today's active queue for one doctor, with per-row session actions. */
@@ -13,12 +13,12 @@ export default function QueueTable({ queue, onStart, onComplete, filter = '' }) 
     try { await fn(id); } finally { setBusyId(null); }
   };
 
-  const term = filter.trim().toLowerCase();
+  const term = searchTerm(filter);
   let waitingIndex = 0;
   const rows = queue.map((p) => {
     const position = p.status === 'waiting' ? ++waitingIndex : null;
     return { ...p, position };
-  }).filter((p) => !term || String(p.patient_name || '').toLowerCase().includes(term) || String(p.ticket_number).includes(term));
+  }).filter((p) => matchesTerm(term, p.patient_name, p.ticket_number));
 
   if (queue.length === 0) {
     return (

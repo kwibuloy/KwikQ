@@ -1,26 +1,22 @@
 import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import RoleAuthCard from '../components/RoleAuthCard';
+import RoleAuthCard from './RoleAuthCard';
+import { INVITATION_KEYS } from './invitation';
 
-const KEYS = {
-  verified: 'admin_invitation_verified',
-  code: 'admin_invitation_code',
-  email: 'admin_invitation_email',
-};
 
 export default function AdminRegisterPage() {
   const navigate = useNavigate();
-  const invitationCode = useMemo(() => sessionStorage.getItem(KEYS.code) || '', []);
-  const invitedEmail = useMemo(() => sessionStorage.getItem(KEYS.email) || '', []);
+  const invitationCode = useMemo(() => sessionStorage.getItem(INVITATION_KEYS.code) || '', []);
+  const invitedEmail = useMemo(() => sessionStorage.getItem(INVITATION_KEYS.email) || '', []);
 
   useEffect(() => {
-    if (sessionStorage.getItem(KEYS.verified) !== 'true' || !invitationCode) {
+    if (sessionStorage.getItem(INVITATION_KEYS.verified) !== 'true' || !invitationCode) {
       navigate('/admin/auth', { replace: true });
     }
   }, [navigate, invitationCode]);
 
   const handleRegisterSuccess = () => {
-    Object.values(KEYS).forEach((k) => sessionStorage.removeItem(k));
+    Object.values(INVITATION_KEYS).forEach((k) => sessionStorage.removeItem(k));
     navigate('/admin/auth', {
       replace: true,
       state: { message: 'Staff account created. Confirm your email from the link we sent, then sign in here.' },

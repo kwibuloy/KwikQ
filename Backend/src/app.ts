@@ -6,14 +6,14 @@ import queueRoutes from './routes/queueRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 
-export interface AppOptions {
+interface AppOptions {
     /** Allowed browser origins. Defaults to CORS_ORIGINS (comma separated) or the Vite dev URL. */
     corsOrigins?: string[];
     /** Max auth requests per IP per window (default 10 per 15 minutes). */
     authRateLimit?: number;
 }
 
-export function parseOrigins(value: string | undefined): string[] {
+function parseOrigins(value: string | undefined): string[] {
     return (value || 'http://localhost:5173')
         .split(',')
         .map((o) => o.trim().replace(/\/$/, ''))
@@ -57,7 +57,6 @@ export function createApp(options: AppOptions = {}) {
     app.use('/api/admin', adminRoutes);
 
     // Last-resort handler: never leak stack traces or driver messages.
-
     app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
         const status = (err as { status?: number })?.status;
         if (status && status >= 400 && status < 500) {

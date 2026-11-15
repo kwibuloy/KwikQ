@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { clearAccessToken, getAccessToken, getUserRole, login, register, takeSignOutReason } from '../services/api';
-import { useDocumentTitle } from '../hooks/useDocumentTitle';
-import { Button, Field, Notice } from '../ui';
-import AuthShell from '../pages/auth/AuthShell';
-import s from '../pages/auth/auth.module.css';
+import { signOutLocal, getAccessToken, getUserRole, login, register, takeSignOutReason } from '../../services/api';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
+import { Button, Field, Notice } from '../../ui';
+import AuthShell from './AuthShell';
+import s from './auth.module.css';
 
 /** Sign-in / registration form for one role. */
 export default function RoleAuthCard({
@@ -56,7 +56,7 @@ export default function RoleAuthCard({
       if (isLogin) {
         const result = await login(form.email, form.password);
         if (result?.role !== role) {
-          clearAccessToken();
+          signOutLocal();
           setError(result?.role
             ? `This is a ${roleLabel(result.role)} account. Use the ${roleLabel(result.role)} sign-in instead.`
             : 'We could not verify your account. Please try again.');

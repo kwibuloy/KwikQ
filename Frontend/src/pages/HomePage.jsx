@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { StatusPill, TicketStub } from '../ui';
 import { IconBell, IconClock, IconDoctor, IconQueue, IconShield, IconTicket, IconUsers } from '../ui/icons';
 import { useAuth } from '../hooks/useAuth';
+import { MINUTES_PER_PATIENT } from '../ui/format';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import ui from '../ui/ui.module.css';
 import s from './HomePage.module.css';
@@ -64,7 +65,7 @@ export default function HomePage() {
             ))}
           </ul>
           <div className={s.boardFoot}>
-            <span>4 in line</span><span>~10 min each</span>
+            <span>4 in line</span><span>~{MINUTES_PER_PATIENT} min each</span>
           </div>
         </div>
       </section>

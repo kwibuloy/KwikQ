@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { EmptyState, StatusPill } from '../../ui';
 import { IconArrowRight, IconDoctor } from '../../ui/icons';
-import { doctorName, initials } from '../../ui/status';
+import { doctorName, initials, matchesTerm, searchTerm } from '../../ui/format';
 import s from './patient.module.css';
 
 function DoctorCardBase({ doctor, onPick, blocked = false }) {
@@ -39,10 +39,8 @@ function DoctorCardBase({ doctor, onPick, blocked = false }) {
 const DoctorCard = memo(DoctorCardBase);
 
 export default function DoctorGrid({ doctors, filter, onPick, blocked = false }) {
-  const term = filter.trim().toLowerCase();
-  const rows = doctors.filter((d) =>
-    !term || [doctorName(d), d.specialization, d.room_number].some((v) => String(v || '').toLowerCase().includes(term)),
-  );
+  const term = searchTerm(filter);
+  const rows = doctors.filter((d) => matchesTerm(term, doctorName(d), d.specialization, d.room_number));
   // Available doctors first, shortest queue first.
   rows.sort((a, b) => Number(b.is_available) - Number(a.is_available) || (a.current_queue_length ?? 0) - (b.current_queue_length ?? 0));
 

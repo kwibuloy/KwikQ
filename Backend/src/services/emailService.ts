@@ -4,12 +4,15 @@ import { Resend } from 'resend';
 const emailFrom = process.env.EMAIL_FROM || 'KwikQ <onboarding@resend.dev>';
 const appUrl = (process.env.APP_URL || 'http://localhost:5173').replace(/\/$/, '');
 
+/** Thrown when the invitation email can't be sent (not configured, or the provider refused). */
+export class EmailSendError extends Error {}
+
 let resendClient: Resend | null = null;
 
 function getResendClient(): Resend {
     const resendApiKey = process.env.RESEND_API_KEY;
     if (!resendApiKey) {
-        throw new Error('RESEND_API_KEY is not configured');
+        throw new EmailSendError('RESEND_API_KEY is not configured');
     }
     if (!resendClient) {
         resendClient = new Resend(resendApiKey);
@@ -54,6 +57,6 @@ export async function sendAdminInvitationEmail(params: {
     });
 
     if (error) {
-        throw new Error(error.message || 'Failed to send invitation email');
+        throw new EmailSendError(error.message || 'Failed to send invitation email');
     }
 }

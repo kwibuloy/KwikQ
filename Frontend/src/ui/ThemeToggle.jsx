@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { IconButton } from './index';
 import { IconMoon, IconSun } from './icons';
 
-const KEY = 'kwikq_theme';
+const KEY = 'kwikq_theme'; // also read by the inline script in index.html
 
 const systemTheme = () =>
   window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';

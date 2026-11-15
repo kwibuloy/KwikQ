@@ -2,9 +2,8 @@ import { useState } from 'react';
 import { Button, EmptyState, Field, Notice, StatusPill } from '../../ui';
 import { IconMail } from '../../ui/icons';
 import { t } from '../../ui/table';
+import { formatDateTime, matchesTerm, searchTerm } from '../../ui/format';
 import s from './admin.module.css';
-
-const fmt = (v) => (v ? new Date(v).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—');
 
 export function InviteForm({ onInvite }) {
   const [email, setEmail] = useState('');
@@ -47,8 +46,8 @@ export function InviteForm({ onInvite }) {
 
 export default function Invitations({ invitations, loaded, onRevoke, filter = '' }) {
   const [busy, setBusy] = useState('');
-  const term = filter.trim().toLowerCase();
-  const rows = invitations.filter((i) => !term || i.email.toLowerCase().includes(term));
+  const term = searchTerm(filter);
+  const rows = invitations.filter((i) => matchesTerm(term, i.email));
 
   if (!loaded) return null;
   if (invitations.length === 0) {
@@ -78,8 +77,8 @@ export default function Invitations({ invitations, loaded, onRevoke, filter = ''
           {rows.map((i) => (
             <tr key={i.invitation_id}>
               <td className={t.lead}><span className={`${t.main} ${s.email}`}>{i.email}</span></td>
-              <td className={`${t.full} tabular`} data-label="Sent">{fmt(i.created_at)}</td>
-              <td className={`${t.full} tabular`} data-label="Expires">{i.expires_at ? fmt(i.expires_at) : 'Never'}</td>
+              <td className={`${t.full} tabular`} data-label="Sent">{formatDateTime(i.created_at)}</td>
+              <td className={`${t.full} tabular`} data-label="Expires">{i.expires_at ? formatDateTime(i.expires_at) : 'Never'}</td>
               <td className={t.full}><StatusPill status="pending" /></td>
               <td className={t.full}>
                 <Button size="sm" variant="danger" loading={busy === i.email} onClick={() => revoke(i.email)}>

@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
-import AuthShell from './auth/AuthShell';
-import { IconArrowRight, IconShield, IconTicket } from '../ui/icons';
-import s from './auth/auth.module.css';
-import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import AuthShell from './AuthShell';
+import { IconArrowRight, IconShield, IconTicket } from '../../ui/icons';
+import s from './auth.module.css';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 export default function LoginPage() {
   useDocumentTitle('Sign in');

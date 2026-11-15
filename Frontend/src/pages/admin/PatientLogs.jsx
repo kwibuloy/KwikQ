@@ -1,13 +1,12 @@
 import { EmptyState, StatusPill, TicketStub } from '../../ui';
 import { IconLogs } from '../../ui/icons';
 import { t } from '../../ui/table';
-
-const formatDate = (v) => (v ? new Date(v).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
+import { formatDate, matchesTerm, searchTerm } from '../../ui/format';
 
 /** Served-patient history for one doctor. */
 export default function PatientLogs({ logs, filter = '' }) {
-  const term = filter.trim().toLowerCase();
-  const rows = logs.filter((l) => !term || String(l.patient_name || '').toLowerCase().includes(term) || String(l.ticket_number).includes(term));
+  const term = searchTerm(filter);
+  const rows = logs.filter((l) => matchesTerm(term, l.patient_name, l.ticket_number));
 
   if (logs.length === 0) {
     return <EmptyState icon={<IconLogs />} title="No visits yet">Patients marked as served will be listed here.</EmptyState>;

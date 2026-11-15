@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button, Checkbox, EmptyState, Field, Modal, Notice, StatusPill } from '../../ui';
 import { IconDoctor, IconTrash } from '../../ui/icons';
-import { doctorName, initials } from '../../ui/status';
+import { doctorName, initials, matchesTerm, searchTerm } from '../../ui/format';
 import { t } from '../../ui/table';
 import s from './admin.module.css';
 
@@ -51,10 +51,8 @@ export function AddDoctorModal({ onClose, onCreate }) {
 /** Roster of doctors with availability + queue info. */
 export default function DoctorList({ doctors, selectedId, onSelect, onToggleAvailability, onRemove, filter = '' }) {
   const [busyId, setBusyId] = useState(null);
-  const term = filter.trim().toLowerCase();
-  const rows = doctors.filter((d) =>
-    !term || [doctorName(d), d.specialization, d.room_number].some((v) => String(v || '').toLowerCase().includes(term)),
-  );
+  const term = searchTerm(filter);
+  const rows = doctors.filter((d) => matchesTerm(term, doctorName(d), d.specialization, d.room_number));
 
   const run = async (id, fn) => {
     setBusyId(id);

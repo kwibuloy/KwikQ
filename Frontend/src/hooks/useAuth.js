@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getAccessToken, getUserName, getUserRole } from '../services/api';
+import { AUTH_EVENT, getAccessToken, getUserName, getUserRole } from '../services/api';
 
 const read = () => ({ token: getAccessToken(), role: getUserRole(), name: getUserName() });
 
@@ -11,10 +11,10 @@ export function useAuth() {
   const [auth, setAuth] = useState(read);
   useEffect(() => {
     const sync = () => setAuth(read());
-    window.addEventListener('auth-state-changed', sync);
+    window.addEventListener(AUTH_EVENT, sync);
     window.addEventListener('storage', sync);
     return () => {
-      window.removeEventListener('auth-state-changed', sync);
+      window.removeEventListener(AUTH_EVENT, sync);
       window.removeEventListener('storage', sync);
     };
   }, []);

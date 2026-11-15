@@ -20,21 +20,18 @@ KwikQ replaces the crowded waiting room with a live ticket. Patients pick a doct
 **Prerequisites**: Node.js 22+, a PostgreSQL database, a Supabase project. Docker Desktop and minikube/kind for the Kubernetes deploy.
 
 **Environment** (copy the examples, then fill them in):
-* `Backend/.env` from `Backend/.env.example`: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `CORS_ORIGINS`, `RESEND_API_KEY`, `EMAIL_FROM`, `APP_URL`. TLS to the database is verified by default; set `DB_SSL_CA` to your provider's CA certificate (Supabase: *Project Settings → Database → SSL*), or `DB_SSL=disable` for a local database.
+* `Backend/.env` from `Backend/.env.example`: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` (the publishable key, never the secret key), `CORS_ORIGINS`, `RESEND_API_KEY`, `EMAIL_FROM`, `APP_URL`. Optional: `AUTH_RATE_LIMIT`, `TRUST_PROXY_HOPS`.
+* TLS to the database is verified by default. Set `DB_SSL_CA` to your provider's CA certificate (Supabase: *Project Settings → Database → SSL*); locally that is a file path, in Kubernetes the PEM text. Use `DB_SSL=disable` only for a local database.
 * `Frontend/.env`: `VITE_API_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
 
-**Database migration** (once per database):
+**Install, migrate, run**:
 ```bash
-cd Backend && npm run db:migrate
-```
+cd Backend && npm install
+npm run db:migrate   # once per database; safe to re-run
+npm run dev          # API on http://localhost:5000
 
-**Run locally**:
-```bash
-# Terminal 1: API
-cd Backend && npm install && npm run dev
-
-# Terminal 2: web app
-cd Frontend && npm install && npm run dev
+# in a second terminal
+cd Frontend && npm install && npm run dev   # web app on http://localhost:5173
 ```
 
 **Checks** (the same ones CI runs):
@@ -51,9 +48,10 @@ The backend's database integration tests (concurrent ticket numbers, single-use 
 ```powershell
 ./deploy.ps1
 ```
+The script builds both images, loads them into kind or minikube when needed, applies `k8s/`, restarts the pods and port-forwards the app to http://localhost:8080 (nginx proxies `/api` to the backend). On Docker Desktop the NodePort also works at http://localhost:30080.
 
 ## Performance benchmarks
-Tested with 50 requests, 10 concurrent users (0 failures across 200 total requests), using `load-test.js`.
+Tested with 50 requests, 10 concurrent users (0 failures across 200 total requests), using `scripts/load-test.js` (usage notes at the top of the file).
 
 | Endpoint | Avg latency | p95 latency | Throughput |
 |----------|-------------|-------------|------------|

@@ -1,4 +1,4 @@
-import RoleAuthCard from '../components/RoleAuthCard';
+import RoleAuthCard from './RoleAuthCard';
 
 export default function PatientAuthPage() {
   return (

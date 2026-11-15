@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { cancelQueue, getPatientStatus } from '../../services/api';
 import { Button, ConfirmDialog, ErrorState, Notice, StatusPill, TicketStub } from '../../ui';
 import { IconBell, IconTicket } from '../../ui/icons';
-import { MINUTES_PER_PATIENT } from '../../ui/status';
+import { MINUTES_PER_PATIENT } from '../../ui/format';
 import s from './patient.module.css';
 
 const POLL_MS = 7000;
@@ -119,7 +119,7 @@ export default function MyTicket({ refreshKey = 0, onTicket = undefined, onEnded
   }
 
   const noteEl = note && (
-    <Notice kind={note.kind} onDismiss={() => setNote(null)} autoHide={note.kind === 'success' ? 6000 : 0}>
+    <Notice kind={note.kind} onDismiss={() => setNote(null)}>
       {note.text} {note.history && <Link to="/patient?view=history">See history</Link>}
     </Notice>
   );

@@ -34,6 +34,10 @@ function buildSslConfig(): PoolConfig['ssl'] {
     return ssl;
 }
 
+if (!connectionString) {
+    console.warn('[db] DATABASE_URL is not set.');
+}
+
 export const pool = new Pool({ connectionString, ssl: buildSslConfig() });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -56,4 +60,3 @@ export async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>)
     }
 }
 
-export default query;

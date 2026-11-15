@@ -1,15 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import RoleAuthCard from '../components/RoleAuthCard';
-import { validateInvitationCode } from '../services/api';
-import { Button, Field, Notice } from '../ui';
-import s from './auth/auth.module.css';
+import RoleAuthCard from './RoleAuthCard';
+import { validateInvitationCode } from '../../services/api';
+import { Button, Field, Notice } from '../../ui';
+import s from './auth.module.css';
+import { INVITATION_KEYS } from './invitation';
 
-const INVITATION_KEYS = {
-  verified: 'admin_invitation_verified',
-  code: 'admin_invitation_code',
-  email: 'admin_invitation_email',
-};
 
 function InvitationForm() {
   const navigate = useNavigate();

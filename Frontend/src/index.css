@@ -79,6 +79,7 @@
   }
 }
 
+/* Same values as the media query above (that one covers first paint before a theme is stored). Keep in sync. */
 :root[data-theme='dark'] {
   color-scheme: dark;
   --bg:            #0f1218;

@@ -1,5 +1,5 @@
 /** Queue/doctor status → pill tone + human label. */
-export const STATUS = {
+const STATUS = {
   waiting: { tone: 'warn', label: 'Waiting' },
   called: { tone: 'info', label: 'Called' },
   'in-consultation': { tone: 'live', label: 'In consultation' },
@@ -29,3 +29,16 @@ export const initials = (name) =>
 
 /** Minutes per patient used for wait estimates (matches the API's estimate). */
 export const MINUTES_PER_PATIENT = 10;
+
+/** Lowercased, trimmed search term ('' matches everything). */
+export const searchTerm = (filter) => String(filter ?? '').trim().toLowerCase();
+
+/** True when the term is empty or any value contains it (case-insensitive). */
+export const matchesTerm = (term, ...values) =>
+  !term || values.some((v) => String(v ?? '').toLowerCase().includes(term));
+
+export const formatDateTime = (v) =>
+  v ? new Date(v).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+
+export const formatDate = (v) =>
+  v ? new Date(v).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
