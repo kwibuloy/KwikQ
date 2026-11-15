@@ -8,8 +8,10 @@ import {
     deleteDoctor,
 } from '../controllers/adminController.js';
 import { authenticateUser, requireRole } from '../middleware/authMiddleware.js';
+import { validateDoctorIdParam } from '../middleware/validate.js';
 
 const router = Router();
+router.param('doctorId', validateDoctorIdParam);
 
 router.post('/invite', authenticateUser, requireRole('admin'), inviteAdmin);
 router.get('/invitations', authenticateUser, requireRole('admin'), getPendingInvitations);

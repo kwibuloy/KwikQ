@@ -5,10 +5,16 @@ import { createInvitation } from '../utils/invitation.js';
 
 async function inviteAndEmail(email: string) {
     const invitation = await createInvitation(email);
-    await sendAdminInvitationEmail({
-        to: email,
-        invitationCode: invitation.invitation_code,
-    });
+    try {
+        await sendAdminInvitationEmail({
+            to: email,
+            invitationCode: invitation.invitation_code,
+        });
+    } catch (err) {
+        // Nobody received the code, so don't leave a live invitation behind.
+        await query('DELETE FROM admin_invitations WHERE invitation_id = $1', [invitation.invitation_id]).catch(() => undefined);
+        throw err;
+    }
     return invitation;
 }
 

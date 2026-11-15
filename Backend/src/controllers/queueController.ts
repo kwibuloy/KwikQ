@@ -1,5 +1,6 @@
 import {Request, Response} from 'express';
 import { query, withTransaction } from '../config/database.js';
+import { isPositiveInt } from '../middleware/validate.js';
 
 /** Clinic-local calendar day used for daily ticket numbering. */
 const CLINIC_TZ = 'Asia/Singapore';
@@ -45,6 +46,9 @@ export const joinQueue = async (req: Request, res: Response) => {
 
     if (!patientId || !doctorId) {
         return res.status(400).json({ error: 'Patient ID and doctor ID are required' });
+    }
+    if (!isPositiveInt(doctorId)) {
+        return res.status(400).json({ error: 'Invalid doctor id' });
     }
 
     try {

@@ -1,7 +1,7 @@
 // Applies every SQL file in db/migrations in name order. Each file is idempotent.
 // Usage: DATABASE_URL=... npm run db:migrate
 import 'dotenv/config';
-import { readdirSync, readFileSync } from 'fs';
+import { existsSync, readdirSync, readFileSync } from 'fs';
 import { join } from 'path';
 import pg from 'pg';
 
@@ -10,7 +10,12 @@ if (!connectionString) {
   console.error('Set DATABASE_URL first.');
   process.exit(1);
 }
-const ssl = process.env.DB_SSL === 'disable' ? false : { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' };
+// Same TLS rules as src/config/database.ts: verified by default, DB_SSL_CA to trust a CA.
+const caEnv = process.env.DB_SSL_CA;
+const ca = caEnv ? (caEnv.includes('BEGIN CERTIFICATE') ? caEnv : existsSync(caEnv) ? readFileSync(caEnv, 'utf8') : undefined) : undefined;
+const ssl = process.env.DB_SSL === 'disable'
+  ? false
+  : { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false', ...(ca ? { ca } : {}) };
 const client = new pg.Client({ connectionString, ssl });
 const dir = join(import.meta.dirname, '..', 'db', 'migrations');
 

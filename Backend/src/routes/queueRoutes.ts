@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import { callNextPatient, getAdminQueue, getAdminPatientLogs, getDoctors, getPatientStatus, joinQueue, cancelQueue, getQueueHistory, startSession, completeSession, skipCurrentPatient, closeCurrentPatient, updateDoctorAvailability } from '../controllers/queueController.js';
 import { authenticateUser, requireRole } from '../middleware/authMiddleware.js';
+import { validateDoctorIdParam } from '../middleware/validate.js';
 
 const router = Router();
+router.param('doctorId', validateDoctorIdParam);
 
 router.get('/doctors', getDoctors);
 router.get('/queue/admin/:doctorId', authenticateUser, requireRole('admin'), getAdminQueue);

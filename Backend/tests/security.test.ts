@@ -215,6 +215,40 @@ describe('register role whitelist', () => {
     });
 });
 
+describe('input validation and side effects', () => {
+    it('rejects a non-numeric doctor id in the URL with 400', async () => {
+        supabase.auth.getUser.mockResolvedValue({ data: { user: fakeUser('a1') }, error: null });
+        dbRoleIs('admin');
+        const res = await request(app).get('/api/queue/admin/abc').set('Authorization', 'Bearer t');
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBe('Invalid doctor id');
+    });
+
+    it('rejects a non-numeric doctor id when joining with 400', async () => {
+        supabase.auth.getUser.mockResolvedValue({ data: { user: fakeUser('p9') }, error: null });
+        dbRoleIs('patient');
+        const res = await request(app).post('/api/queue/join').set('Authorization', 'Bearer t').send({ doctorId: 'x' });
+        expect(res.status).toBe(400);
+    });
+
+    it('removes the invitation again when the email cannot be sent', async () => {
+        supabase.auth.getUser.mockResolvedValue({ data: { user: fakeUser('a2') }, error: null });
+        db.query.mockImplementation(async (sql: string) => {
+            if (sql.includes('SELECT role FROM users')) return { rows: [{ role: 'admin' }], rowCount: 1 };
+            if (sql.includes('INSERT INTO admin_invitations')) {
+                return { rows: [{ invitation_id: 'inv-1', email: 'x@y.z', invitation_code: 'ABC' }], rowCount: 1 };
+            }
+            return { rows: [], rowCount: 0 };
+        });
+        const saved = process.env.RESEND_API_KEY;
+        delete process.env.RESEND_API_KEY;
+        const res = await request(app).post('/api/admin/invite').set('Authorization', 'Bearer t').send({ email: 'x@y.z' });
+        process.env.RESEND_API_KEY = saved;
+        expect(res.status).toBe(503);
+        expect(db.query).toHaveBeenCalledWith('DELETE FROM admin_invitations WHERE invitation_id = $1', ['inv-1']);
+    });
+});
+
 describe('http hardening', () => {
     it('sets helmet headers', async () => {
         const res = await request(app).get('/healthz');

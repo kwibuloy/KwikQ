@@ -56,6 +56,12 @@ describe('QueueTable', () => {
     expect(screen.getByText('Ben Lim')).toBeInTheDocument();
   });
 
+  it('estimates waits the same way the patient sees them', () => {
+    render(<QueueTable queue={queue} onStart={vi.fn()} onComplete={vi.fn()} />);
+    const row = screen.getByText('Cy Tan').closest('tr');
+    expect(row).toHaveTextContent('Next');
+  });
+
   it('shows an empty state with no patients', () => {
     render(<QueueTable queue={[]} onStart={vi.fn()} onComplete={vi.fn()} />);
     expect(screen.getByText('Nobody in line')).toBeInTheDocument();

@@ -48,8 +48,9 @@ export default function QueueTable({ queue, onStart, onComplete, filter = '' }) 
         <tbody>
           {rows.map((p) => {
             const id = p.queue_id;
+            // Same estimate the patient sees: 10 minutes per person ahead of them.
             const wait = p.status === 'waiting'
-              ? `${p.position * MINUTES_PER_PATIENT} min`
+              ? (p.position === 1 ? 'Next' : `~${(p.position - 1) * MINUTES_PER_PATIENT} min`)
               : p.status === 'called' ? 'Now' : '—';
             return (
               <tr key={id}>

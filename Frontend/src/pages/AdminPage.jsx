@@ -42,6 +42,7 @@ export default function AdminPage() {
   const [notice, setNotice] = useState(null);
   const [selectedId, setSelectedId] = useState('');
   const [calledTicket, setCalledTicket] = useState(null);
+  const [calledAt, setCalledAt] = useState(0);
   const [busy, setBusy] = useState('');
   const [addingDoctor, setAddingDoctor] = useState(false);
   const [confirm, setConfirm] = useState(null); // { title, body, label, run }
@@ -60,10 +61,11 @@ export default function AdminPage() {
 
   // The "Now calling" banner only makes sense while that ticket is still in the called state.
   useEffect(() => {
-    if (calledTicket == null || !updatedAt) return;
+    // Only judge with data fetched after the call; older data still shows them as waiting.
+    if (calledTicket == null || !updatedAt || updatedAt.getTime() <= calledAt) return;
     const still = queue.some((q) => q.ticket_number === calledTicket && q.status === 'called');
     if (!still) setCalledTicket(null);
-  }, [queue, calledTicket, updatedAt]);
+  }, [queue, calledTicket, calledAt, updatedAt]);
 
   const selected = doctors.find((d) => String(d.doctor_id) === String(selectedId));
   const counts = useMemo(() => ({
@@ -96,6 +98,7 @@ export default function AdminPage() {
 
   const handleCallNext = () => act('call', async () => {
     const res = await callNextPatient(selectedId);
+    setCalledAt(Date.now());
     setCalledTicket(res?.data?.ticket_number ?? null);
     await reloadQueue({ silent: true });
   });
